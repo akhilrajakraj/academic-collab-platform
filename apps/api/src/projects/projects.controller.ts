@@ -26,6 +26,11 @@ export class ProjectsController {
     return this.projects.create(dto);
   }
 
+  @Get(':projectId/activity')
+  activity(@Param('projectId', new ParseUUIDPipe()) projectId: string) {
+    return this.projects.activity(projectId);
+  }
+
   @Get(':projectId')
   get(@Param('projectId', new ParseUUIDPipe()) projectId: string) {
     return this.projects.get(projectId);
