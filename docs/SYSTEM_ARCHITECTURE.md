@@ -18,7 +18,7 @@ Academic Collab Platform helps students organize academic projects, write docume
 - **Cache and jobs:** Redis; add a queue worker when background exports are implemented.
 - **Editor:** Tiptap; Yjs collaboration remains a planned phase.
 - **Object storage:** S3-compatible storage (MinIO locally) for exported PDFs and uploaded assets.
-- **Authentication:** a local-only demo identity currently exercises CRUD; OIDC/OAuth and production authorization must be implemented before deployment.
+- **Authentication:** email/password registration and JWT bearer authentication are now implemented; production hardening, email verification, recovery, and rate limiting remain required before deployment.
 - **Deployment:** Docker Compose for local dependencies; GitHub Actions type-checks, lints, and builds workspaces.
 
 ## Monorepo boundaries
@@ -54,7 +54,7 @@ IDs are UUIDs; timestamps are stored in UTC; membership roles and foreign keys d
 
 1. **Foundation — implemented:** workspace scripts, environment template, health endpoint, database schema, and dashboard shell.
 2. **Project/document workflow — first slice implemented:** project CRUD, demo owner membership, document CRUD, activity, revisions, and dashboard API integration.
-3. **Identity and team workflow — next:** real authentication, invite/add/remove members, roles UI, and integration tests.
+3. **Identity and team workflow — first slice implemented:** bcrypt password registration/login, JWT bearer guard, authenticated account profile, and protected project/document/comment endpoints. Next: email verification, password recovery, rate limiting, invitation and member-management UI, and authorization tests.
 4. **Writing workflow — API slice added:** document comments can be listed/created/resolved/deleted with membership checks; prior revisions can be restored while preserving the pre-restore version. Tiptap editor, autosave, comment anchoring UI, and export jobs remain planned.
 5. **Collaboration:** Yjs/WebSocket collaboration, presence, conflict handling, and robust activity feed.
 6. **Hardening:** authorization tests, rate limits, observability, backups, accessibility, and deployment.
