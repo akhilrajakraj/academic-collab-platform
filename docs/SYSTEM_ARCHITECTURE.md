@@ -2,29 +2,31 @@
 
 ## Current status
 
-The repository is at the architecture/scaffolding stage. This document describes the intended first implementation slice; it does not claim planned features are already implemented.
+Phase 1 foundation and a first Phase 2 slice are committed. The repository now has a Next.js API-backed dashboard, a NestJS REST API, Prisma/PostgreSQL persistence, project/document endpoints, project membership checks, activity records, and document revision snapshots. The demo identity is for local development only and is blocked in production mode.
+
+Production authentication, invitation management, a rich-text editor, live collaboration, comments, export, and AI features remain planned.
 
 ## Product goals
 
-Academic Collab Platform helps students write documents together, organize projects, review changes, and export a final PDF. The initial release should prioritize a reliable project/document workflow before real-time collaboration and advanced integrations.
+Academic Collab Platform helps students organize academic projects, write documents together, review changes, and assemble final submissions. Prioritize a reliable, auditable project/document workflow before real-time collaboration and advanced integrations.
 
 ## Architecture
 
 - **Web:** Next.js App Router, React, TypeScript.
 - **API:** NestJS, TypeScript, versioned REST endpoints under `/api/v1`.
-- **Database:** PostgreSQL with Prisma as the schema/migration layer.
+- **Database:** PostgreSQL with Prisma schema and checked-in SQL migrations.
 - **Cache and jobs:** Redis; add a queue worker when background exports are implemented.
-- **Editor:** Tiptap; Yjs collaboration is a planned phase, not assumed operational.
+- **Editor:** Tiptap; Yjs collaboration remains a planned phase.
 - **Object storage:** S3-compatible storage (MinIO locally) for exported PDFs and uploaded assets.
-- **Authentication:** OIDC/OAuth integration in a later slice; do not treat mock/local UI identity as production authentication.
-- **Deployment:** Docker Compose for local dependencies; CI should lint, type-check, test, and build each workspace.
+- **Authentication:** a local-only demo identity currently exercises CRUD; OIDC/OAuth and production authorization must be implemented before deployment.
+- **Deployment:** Docker Compose for local dependencies; GitHub Actions type-checks, lints, and builds workspaces.
 
-## Suggested monorepo boundaries
+## Monorepo boundaries
 
 - `apps/web`: user-facing Next.js application.
-- `apps/api`: NestJS REST API and Prisma schema.
-- `packages/shared`: shared contracts, validation schemas, and types.
-- `packages/editor`: reusable editor configuration and extensions.
+- `apps/api`: NestJS REST API, Prisma schema, migrations, and domain services.
+- `packages/shared`: shared contracts and types.
+- `packages/editor`: future reusable editor configuration and extensions.
 - `infra/docker`: local infrastructure.
 - `docs`: product, architecture, and delivery decisions.
 
@@ -32,38 +34,39 @@ Academic Collab Platform helps students write documents together, organize proje
 
 - **User** belongs to projects through **ProjectMember**.
 - **Project** groups documents and collaborators.
-- **Document** stores title, structured content, status, and project ownership.
-- **DocumentRevision** records saved versions and authorship.
-- **Comment** anchors feedback to a document.
-- **Activity** records meaningful project/document events.
+- **Document** stores title, structured JSON content, status, and project ownership.
+- **DocumentRevision** stores a snapshot of the previous title/content on document content or title updates.
+- **Comment** is modeled for future anchored feedback.
+- **Activity** records project creation and document changes.
 
-Use UUID identifiers, UTC timestamps, explicit membership roles, and database constraints for ownership and relationships.
+IDs are UUIDs; timestamps are stored in UTC; membership roles and foreign keys define project ownership and data relationships.
 
 ## API conventions
 
 - Prefix endpoints with `/api/v1`.
-- Provide `GET /api/v1/health` for liveness.
-- Validate request DTOs at the boundary.
+- Validate DTOs with NestJS validation pipes.
 - Return consistent HTTP status codes and avoid exposing internal errors.
-- Add authentication and project-membership authorization before exposing real user data.
-- Paginate lists and make document writes auditable.
+- Check project membership before project/document reads and writes.
+- Owners can update/delete projects; owners/editors can create, update, and delete documents.
+- Document title/content updates create a revision snapshot in the same database transaction as the update.
 
 ## Delivery sequence
 
-1. **Foundation:** workspace scripts, environment template, health endpoint, database schema, and a clear web entry point.
-2. **Project workflow:** authentication, project CRUD, membership/roles, document CRUD, and persistence.
-3. **Writing workflow:** editor, autosave, revision history, comments, and export jobs.
-4. **Collaboration:** Yjs/WebSocket collaboration, presence, conflict handling, and activity feed.
-5. **Hardening:** authorization tests, rate limits, observability, backups, accessibility, and deployment.
+1. **Foundation — implemented:** workspace scripts, environment template, health endpoint, database schema, and dashboard shell.
+2. **Project/document workflow — first slice implemented:** project CRUD, demo owner membership, document CRUD, activity, revisions, and dashboard API integration.
+3. **Identity and team workflow — next:** real authentication, invite/add/remove members, roles UI, and integration tests.
+4. **Writing workflow:** Tiptap editor, autosave, revision restore, comments, and export jobs.
+5. **Collaboration:** Yjs/WebSocket collaboration, presence, conflict handling, and robust activity feed.
+6. **Hardening:** authorization tests, rate limits, observability, backups, accessibility, and deployment.
 
-## Non-goals for the first slice
+## Security boundary
 
-Do not claim live multi-user editing, production authentication, real PDF export, notifications, or AI assistance until those capabilities are implemented and tested. Keep the UI explicit about demo/local-only actions.
+The demo identity is not authentication. It is blocked when `NODE_ENV=production`, but this is a development convenience, not a substitute for session/token authentication. Do not deploy the API or use it with real student data until authentication, CSRF/CORS policy as appropriate, rate limits, and production authorization are implemented and tested.
 
 ## Quality gates
 
 - Install reproducibly from the lockfile.
-- Lint and type-check every workspace.
-- Test health and core domain behavior.
-- Run database migrations from a clean database in CI.
+- Type-check and build each workspace.
+- Test health, project membership, document writes, and revision creation.
+- Apply migrations from a clean PostgreSQL database in CI.
 - Keep secrets out of source control and provide safe environment defaults.
