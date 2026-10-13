@@ -23,7 +23,8 @@
     "rxjs": "^7.8.1",
     "@nestjs/jwt": "^10.2.0",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "@nestjs/throttler": "^6.4.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
