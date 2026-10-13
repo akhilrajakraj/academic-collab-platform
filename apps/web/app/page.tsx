@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 type ApiProject = { id: string; name: string; description?: string | null; _count?: { documents: number; members: number } };
 type ApiDocument = { id: string; projectId: string; title: string; status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'ARCHIVED'; updatedAt: string; project?: { name: string } };
@@ -46,6 +46,7 @@ function activityView(activity: ApiActivity): ActivityItem {
 
 export default function HomePage() {
   const [token, setToken] = useState<string | null>(null);
+  const [account, setAccount] = useState<{ displayName: string; email: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authEmail, setAuthEmail] = useState('');
@@ -85,6 +86,13 @@ export default function HomePage() {
     return response;
   }, [token]);
 
+  useEffect(() => {
+    if (!token) { setAccount(null); return; }
+    void apiFetch(API_BASE + '/auth/me', { cache: 'no-store' })
+      .then(async (response) => { if (response.ok) setAccount(await response.json()); })
+      .catch(() => undefined);
+  }, [apiFetch, token]);
+
   const loadWorkspace = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -94,7 +102,7 @@ export default function HomePage() {
       if (!projectResponse.ok) throw new Error('Could not load projects. Confirm the API and database are running.');
       let nextProjects: ApiProject[] = await projectResponse.json();
 
-      // Bootstrap one project for a brand-new local demo workspace.
+      // Create a starter project for a new account.
       if (nextProjects.length === 0) {
         const createResponse = await apiFetch(`${API_BASE}/projects`, {
           method: 'POST',
@@ -182,7 +190,7 @@ export default function HomePage() {
     }
   }
 
-  async function submitAuth(event: React.FormEvent<HTMLFormElement>) {
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (authBusy) return;
     setAuthBusy(true);
@@ -203,6 +211,7 @@ export default function HomePage() {
       }
       sessionStorage.setItem('academic-collab-access-token', result.accessToken);
       setToken(result.accessToken);
+      setAccount(result.user);
       setAuthPassword('');
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Authentication failed.');
@@ -214,6 +223,7 @@ export default function HomePage() {
   function signOut() {
     sessionStorage.removeItem('academic-collab-access-token');
     setToken(null);
+    setAccount(null);
     setProjects([]);
     setDocuments([]);
     setActivities([]);
@@ -293,7 +303,7 @@ export default function HomePage() {
           <footer className="page-footer"><span>Made for curious minds <span className="footer-heart">♥</span></span><span>Academic Collab · API-backed development preview</span></footer>
         </div>
       </section>
-      {showCreate && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title"><button className="modal-close" onClick={() => setShowCreate(false)} disabled={saving} aria-label="Close dialog">×</button><div className="modal-icon">▤</div><p className="eyebrow">SAVE TO YOUR PROJECT</p><h2 id="create-title">Create a document</h2><p className="modal-description">Your document will be saved in the first project in your workspace.</p><form onSubmit={(event) => { event.preventDefault(); void createDocument(); }}><label htmlFor="document-title">Document title</label><input id="document-title" autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Project proposal" maxLength={160} required /><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="primary-button" disabled={saving || !newTitle.trim()}>{saving ? 'Saving…' : 'Create document'} <span>→</span></button></div></form><p className="demo-note">Local demo identity · Data is stored in PostgreSQL through the API. This mode is disabled when NODE_ENV=production until authentication is configured.</p></section></div>}
+      {showCreate && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title"><button className="modal-close" onClick={() => setShowCreate(false)} disabled={saving} aria-label="Close dialog">×</button><div className="modal-icon">▤</div><p className="eyebrow">SAVE TO YOUR PROJECT</p><h2 id="create-title">Create a document</h2><p className="modal-description">Your document will be saved in the first project in your workspace.</p><form onSubmit={(event) => { event.preventDefault(); void createDocument(); }}><label htmlFor="document-title">Document title</label><input id="document-title" autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Project proposal" maxLength={160} required /><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="primary-button" disabled={saving || !newTitle.trim()}>{saving ? 'Saving…' : 'Create document'} <span>→</span></button></div></form><p className="demo-note">Signed-in account · This document is stored in PostgreSQL. Real-time collaboration is not yet enabled.</p></section></div>}
     </main>
   );
 }
