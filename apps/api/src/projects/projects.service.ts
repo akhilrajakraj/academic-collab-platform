@@ -82,8 +82,7 @@ export class ProjectsService {
   }
 
   async activity(projectId: string) {
-    const user = await this.identity.currentUser();
-    await this.requireMembership(projectId, user.id);
+    await this.get(projectId);
     return this.prisma.activity.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
