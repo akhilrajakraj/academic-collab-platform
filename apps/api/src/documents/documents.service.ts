@@ -25,7 +25,7 @@ export class DocumentsService {
   }
 
   async createForProject(projectId: string, dto: CreateDocumentDto, userId: string) {
-    await this.requireEditor(projectId, user.id);
+    await this.requireEditor(projectId, userId);
     return this.prisma.$transaction(async (tx) => {
       const document = await tx.document.create({
         data: {
@@ -38,7 +38,7 @@ export class DocumentsService {
       await tx.activity.create({
         data: {
           projectId,
-          actorId: user.id,
+          actorId: userId,
           type: 'DOCUMENT_CREATED',
           message: `Created document “${document.title}”`,
           metadata: { documentId: document.id },
@@ -53,7 +53,7 @@ export class DocumentsService {
     const document = await this.prisma.document.findFirst({
       where: {
         id: documentId,
-        project: { members: { some: { userId: user.id } } },
+        project: { members: { some: { userId: userId } } },
       },
       include: {
         project: { select: { id: true, name: true } },
@@ -68,18 +68,18 @@ export class DocumentsService {
     const existing = await this.prisma.document.findFirst({
       where: {
         id: documentId,
-        project: { members: { some: { userId: user.id } } },
+        project: { members: { some: { userId: userId } } },
       },
     });
     if (!existing) throw new NotFoundException('Document not found.');
-    await this.requireEditor(existing.projectId, user.id);
+    await this.requireEditor(existing.projectId, userId);
 
     return this.prisma.$transaction(async (tx) => {
       if (dto.title !== undefined || dto.content !== undefined) {
         await tx.documentRevision.create({
           data: {
             documentId: existing.id,
-            authorId: user.id,
+            authorId: userId,
             title: existing.title,
             content: existing.content as Prisma.InputJsonValue,
           },
@@ -96,7 +96,7 @@ export class DocumentsService {
       await tx.activity.create({
         data: {
           projectId: existing.projectId,
-          actorId: user.id,
+          actorId: userId,
           type: 'DOCUMENT_UPDATED',
           message: `Updated document “${updated.title}”`,
           metadata: { documentId: updated.id },
@@ -114,12 +114,12 @@ export class DocumentsService {
     const existing = await this.prisma.document.findFirst({
       where: {
         id: documentId,
-        project: { members: { some: { userId: user.id } } },
+        project: { members: { some: { userId: userId } } },
       },
       select: { id: true, projectId: true },
     });
     if (!existing) throw new NotFoundException('Document not found.');
-    await this.requireEditor(existing.projectId, user.id);
+    await this.requireEditor(existing.projectId, userId);
     await this.prisma.document.delete({ where: { id: existing.id } });
     await this.prisma.project.update({
       where: { id: existing.projectId },
@@ -131,7 +131,7 @@ export class DocumentsService {
     const document = await this.prisma.document.findFirst({
       where: {
         id: documentId,
-        project: { members: { some: { userId: user.id } } },
+        project: { members: { some: { userId: userId } } },
       },
       select: { id: true },
     });
@@ -146,10 +146,10 @@ export class DocumentsService {
 
   async restoreRevision(documentId: string, revisionId: string, userId: string) {
     const document = await this.prisma.document.findFirst({
-      where: { id: documentId, project: { members: { some: { userId: user.id } } } },
+      where: { id: documentId, project: { members: { some: { userId: userId } } } },
     });
     if (!document) throw new NotFoundException('Document not found.');
-    await this.requireEditor(document.projectId, user.id);
+    await this.requireEditor(document.projectId, userId);
     const revision = await this.prisma.documentRevision.findFirst({
       where: { id: revisionId, documentId },
     });
@@ -159,7 +159,7 @@ export class DocumentsService {
       await tx.documentRevision.create({
         data: {
           documentId,
-          authorId: user.id,
+          authorId: userId,
           title: document.title,
           content: document.content as Prisma.InputJsonValue,
         },
@@ -171,7 +171,7 @@ export class DocumentsService {
       await tx.activity.create({
         data: {
           projectId: document.projectId,
-          actorId: user.id,
+          actorId: userId,
           type: 'REVISION_RESTORED',
           message: `Restored an earlier version of “${restored.title}”`,
           metadata: { documentId, revisionId },
