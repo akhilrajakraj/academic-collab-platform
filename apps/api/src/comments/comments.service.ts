@@ -1,6 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ProjectRole } from '@prisma/client';
-import { DemoIdentityService } from '../demo-identity/demo-identity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
@@ -8,12 +7,10 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly identity: DemoIdentityService,
   ) {}
 
-  async list(documentId: string) {
-    const user = await this.identity.currentUser();
-    await this.requireDocument(documentId, user.id);
+  async list(documentId: string, userId: string) {
+    await this.requireDocument(documentId, userId);
     return this.prisma.comment.findMany({
       where: { documentId },
       orderBy: { createdAt: 'asc' },
@@ -21,9 +18,8 @@ export class CommentsService {
     });
   }
 
-  async create(documentId: string, dto: CreateCommentDto) {
-    const user = await this.identity.currentUser();
-    const document = await this.requireDocument(documentId, user.id);
+  async create(documentId: string, dto: CreateCommentDto, userId: string) {
+    const document = await this.requireDocument(documentId, userId);
     return this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
         data: {
@@ -47,8 +43,7 @@ export class CommentsService {
     });
   }
 
-  async setResolved(commentId: string, resolved: boolean) {
-    const user = await this.identity.currentUser();
+  async setResolved(commentId: string, resolved: boolean, userId: string) {
     const comment = await this.prisma.comment.findFirst({
       where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
       include: { document: { select: { projectId: true } } },
@@ -68,8 +63,7 @@ export class CommentsService {
     });
   }
 
-  async remove(commentId: string) {
-    const user = await this.identity.currentUser();
+  async remove(commentId: string, userId: string) {
     const comment = await this.prisma.comment.findFirst({
       where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
       include: { document: { select: { projectId: true } } },
