@@ -48,4 +48,4 @@ DTOs are validated at the API boundary. Project membership is checked before pro
 
 ## Security limitations
 
-This is an early development implementation. Before production use, add rate limiting and abuse protection for registration/login, email verification, password reset/account recovery, token revocation/refresh strategy, security logging, and automated authentication/authorization tests. Configure HTTPS and a production-grade secret manager. Do not deploy with the example JWT secret.
+This is an early development implementation. Before production use, add email verification, password reset/account recovery, token revocation/refresh strategy, security logging, and automated authentication/authorization tests. Registration and login currently use a basic in-memory per-process rate limit; use a shared store and reverse-proxy protections for multi-instance production deployments. Configure HTTPS and a production-grade secret manager. Do not deploy with the example JWT secret.
