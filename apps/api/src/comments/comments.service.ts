@@ -24,7 +24,7 @@ export class CommentsService {
       const comment = await tx.comment.create({
         data: {
           documentId,
-          authorId: user.id,
+          authorId: userId,
           body: dto.body.trim(),
           ...(dto.anchor ? { anchor: dto.anchor } : {}),
         },
@@ -33,7 +33,7 @@ export class CommentsService {
       await tx.activity.create({
         data: {
           projectId: document.projectId,
-          actorId: user.id,
+          actorId: userId,
           type: 'COMMENT_ADDED',
           message: `Commented on “${document.title}”`,
           metadata: { documentId, commentId: comment.id },
@@ -45,12 +45,12 @@ export class CommentsService {
 
   async setResolved(commentId: string, resolved: boolean, userId: string) {
     const comment = await this.prisma.comment.findFirst({
-      where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
+      where: { id: commentId, document: { project: { members: { some: { userId: userId } } } } },
       include: { document: { select: { projectId: true } } },
     });
     if (!comment) throw new NotFoundException('Comment not found.');
     const membership = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: comment.document.projectId, userId: user.id } },
+      where: { projectId_userId: { projectId: comment.document.projectId, userId: userId } },
       select: { role: true },
     });
     if (!membership || membership.role === ProjectRole.VIEWER) {
@@ -65,15 +65,15 @@ export class CommentsService {
 
   async remove(commentId: string, userId: string) {
     const comment = await this.prisma.comment.findFirst({
-      where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
+      where: { id: commentId, document: { project: { members: { some: { userId: userId } } } } },
       include: { document: { select: { projectId: true } } },
     });
     if (!comment) throw new NotFoundException('Comment not found.');
     const membership = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: comment.document.projectId, userId: user.id } },
+      where: { projectId_userId: { projectId: comment.document.projectId, userId: userId } },
       select: { role: true },
     });
-    if (comment.authorId !== user.id && membership?.role !== ProjectRole.OWNER && membership?.role !== ProjectRole.EDITOR) {
+    if (comment.authorId !== userId && membership?.role !== ProjectRole.OWNER && membership?.role !== ProjectRole.EDITOR) {
       throw new ForbiddenException('You can only delete your own comments.');
     }
     await this.prisma.comment.delete({ where: { id: commentId } });
