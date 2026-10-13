@@ -1,45 +1,61 @@
-# Academic Collaboration Platform
+# Academic Collab Platform
 
-A production-oriented foundation for collaborative academic writing.
+A collaborative writing workspace for students to plan projects, write documents together, review revisions, and export final work.
 
-## Vision
-Students can create projects, divide documents into sections, collaborate in real time, review changes, manage references, and export the final work to PDF/DOCX. Microsoft Word integration is planned as a later compatibility layer rather than the core editor.
+## Current implementation
 
-## Planned stack
-- Web: Next.js + TypeScript
-- API: NestJS + TypeScript
-- Database: PostgreSQL
-- Cache / presence / jobs: Redis
-- Collaborative editing: Tiptap + Yjs
-- Object storage: S3-compatible storage
-- Auth: OIDC/OAuth-ready authentication
-- Deployment: Docker, CI/CD, cloud-agnostic
+The repository is being built incrementally. The current foundation includes:
 
-## Repository structure
+- A responsive Next.js dashboard preview with recent documents, search, status filtering, activity, and a local-only create-document dialog.
+- A NestJS API bootstrap with a versioned health endpoint at `GET /api/v1/health`.
+- A Prisma schema describing users, projects, project memberships, documents, revisions, comments, and activity.
+- A shared TypeScript contract package.
+- A system architecture and delivery plan in `docs/SYSTEM_ARCHITECTURE.md`.
+
+**Not yet implemented:** production authentication, project/document persistence services, real-time multi-user editing, comments API, PDF export, notifications, and AI features. The dashboard currently uses sample data and browser state; it is not connected to the API yet.
+
+## Technology
+
+- Web: Next.js, React, TypeScript
+- API: NestJS, TypeScript
+- Data: PostgreSQL, Prisma
+- Local infrastructure: Docker Compose, Redis, MinIO
+- Planned editor: Tiptap + Yjs
+
+## Requirements
+
+- Node.js 20+
+- pnpm 10+
+- Docker Desktop (for PostgreSQL, Redis, and MinIO)
+
+## Getting started
+
+1. Copy `.env.example` to `.env` and adjust values.
+2. Start local infrastructure with `docker compose -f infra/docker/docker-compose.yml up -d`.
+3. Install dependencies using `pnpm install`.
+4. Generate Prisma Client with `pnpm --filter @academic-collab/api prisma:generate`.
+5. Start the API with `pnpm --filter @academic-collab/api dev`.
+6. In another terminal, start the web app with `pnpm --filter @academic-collab/web dev`.
+
+The web app runs on port 3000 and the API on port 4000 by default.
+
+## Repository layout
+
 ```text
 apps/
-  web/        # student/reviewer web application
-  api/        # REST/WebSocket backend
+  web/                 Next.js application
+  api/                 NestJS API and Prisma schema
 packages/
-  editor/     # shared editor/collaboration primitives
-  shared/     # shared types, validation, constants
-infra/
-  docker/     # local infrastructure
-  # future: terraform/k8s
-
-docs/         # architecture and product documentation
+  shared/              Shared TypeScript contracts
+  editor/              Planned editor package
+infra/docker/          Local infrastructure
+docs/                  Product and architecture documentation
 ```
 
-## Product phases
-1. Project/workspace management
-2. Section assignment and permissions
-3. Rich-text collaborative editing
-4. Comments and version history
-5. Document assembly
-6. PDF/DOCX export
-7. Supervisor/reviewer workflows
-8. Microsoft Word / Microsoft 365 integration
-9. AI-assisted academic workflows
+## Project principles
 
-## Status
-Planning / architecture stage. No production deployment yet.
+- Make implementation status explicit; do not present planned capabilities as complete.
+- Validate inputs at API boundaries and enforce project membership on every protected resource.
+- Keep secrets out of source control.
+- Preserve document revisions and make collaboration changes auditable.
+- Meet keyboard accessibility and reduced-motion expectations.
