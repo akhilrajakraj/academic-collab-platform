@@ -31,6 +31,10 @@ The API defaults to port `4000` and uses the `/api/v1` prefix.
 - `PATCH /api/v1/documents/:documentId` — update document title, content, or status; content/title edits snapshot the previous version.
 - `DELETE /api/v1/documents/:documentId` — delete a document.
 - `GET /api/v1/documents/:documentId/revisions` — list previous document versions.
+- `POST /api/v1/documents/:documentId/revisions/:revisionId/restore` — restore a revision after snapshotting the current version.
+- `GET /api/v1/documents/:documentId/comments` and `POST` — list/add document comments.
+- `PATCH /api/v1/comments/:commentId` with `{ "resolved": true }` — resolve or reopen a comment.
+- `DELETE /api/v1/comments/:commentId` — delete your comment, or an editor/owner can moderate comments.
 
 Request DTOs are validated at the API boundary. Project membership is checked for project/document reads and writes.
 
