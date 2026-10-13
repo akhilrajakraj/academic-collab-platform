@@ -1,13 +1,16 @@
 {
   "name": "academic-collab-platform",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.24.0"
+    "dev": "pnpm --parallel --filter @academic-collab/web --filter @academic-collab/api dev",
+    "dev:web": "pnpm --filter @academic-collab/web dev",
+    "dev:api": "pnpm --filter @academic-collab/api dev",
+    "build": "pnpm --recursive --if-present build",
+    "lint": "pnpm --recursive --if-present lint",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "db:generate": "pnpm --filter @academic-collab/api prisma:generate",
+    "db:migrate": "pnpm --filter @academic-collab/api prisma:migrate"
+  }
 }
