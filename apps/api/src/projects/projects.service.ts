@@ -1,6 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ProjectRole } from '@prisma/client';
-import { DemoIdentityService } from '../demo-identity/demo-identity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -13,20 +12,17 @@ const projectSummary = {
 export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly identity: DemoIdentityService,
   ) {}
 
-  async list() {
-    const user = await this.identity.currentUser();
+  async list(userId: string) {
     return this.prisma.project.findMany({
-      where: { members: { some: { userId: user.id } } },
+      where: { members: { some: { userId: userId } } },
       orderBy: { updatedAt: 'desc' },
       include: projectSummary,
     });
   }
 
-  async create(dto: CreateProjectDto) {
-    const user = await this.identity.currentUser();
+  async create(dto: CreateProjectDto, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
         data: {
@@ -52,8 +48,7 @@ export class ProjectsService {
     });
   }
 
-  async get(projectId: string) {
-    const user = await this.identity.currentUser();
+  async get(projectId: string, userId: string) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, members: { some: { userId: user.id } } },
       include: projectSummary,
@@ -62,9 +57,8 @@ export class ProjectsService {
     return project;
   }
 
-  async update(projectId: string, dto: UpdateProjectDto) {
-    const user = await this.identity.currentUser();
-    await this.requireOwner(projectId, user.id);
+  async update(projectId: string, dto: UpdateProjectDto, userId: string) {
+    await this.requireOwner(projectId, userId);
     return this.prisma.project.update({
       where: { id: projectId },
       data: {
@@ -75,14 +69,13 @@ export class ProjectsService {
     });
   }
 
-  async remove(projectId: string) {
-    const user = await this.identity.currentUser();
-    await this.requireOwner(projectId, user.id);
+  async remove(projectId: string, userId: string) {
+    await this.requireOwner(projectId, userId);
     await this.prisma.project.delete({ where: { id: projectId } });
   }
 
-  async activity(projectId: string) {
-    await this.get(projectId);
+  async activity(projectId: string, userId: string) {
+    await this.get(projectId, userId);
     return this.prisma.activity.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
