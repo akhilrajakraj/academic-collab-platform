@@ -6,6 +6,7 @@ type ApiProject = { id: string; name: string; description?: string | null; _coun
 type ApiDocument = { id: string; projectId: string; title: string; status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'ARCHIVED'; updatedAt: string; project?: { name: string } };
 type DocumentItem = { id: string; projectId: string; title: string; project: string; status: 'Draft' | 'In review' | 'Approved' | 'Archived'; updated: string };
 type ApiActivity = { id: string; message: string; createdAt: string; actor?: { displayName: string } | null };
+type AuthResponse = { accessToken: string; user: { displayName: string; email: string } };
 type ActivityItem = { initials: string; color: string; title: string; action: string; target: string; time: string };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
@@ -44,6 +45,14 @@ function activityView(activity: ApiActivity): ActivityItem {
 }
 
 export default function HomePage() {
+  const [token, setToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -56,17 +65,38 @@ export default function HomePage() {
   const [apiError, setApiError] = useState('');
   const [notice, setNotice] = useState('');
 
+  useEffect(() => {
+    setToken(sessionStorage.getItem('academic-collab-access-token'));
+    setAuthLoading(false);
+  }, []);
+
+  const apiFetch = useCallback(async (url: string, init: RequestInit = {}) => {
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers as Record<string, string> | undefined),
+        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      },
+    });
+    if (response.status === 401) {
+      sessionStorage.removeItem('academic-collab-access-token');
+      setToken(null);
+    }
+    return response;
+  }, [token]);
+
   const loadWorkspace = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     setApiError('');
     try {
-      const projectResponse = await fetch(`${API_BASE}/projects`, { cache: 'no-store' });
+      const projectResponse = await apiFetch(`${API_BASE}/projects`, { cache: 'no-store' });
       if (!projectResponse.ok) throw new Error('Could not load projects. Confirm the API and database are running.');
       let nextProjects: ApiProject[] = await projectResponse.json();
 
       // Bootstrap one project for a brand-new local demo workspace.
       if (nextProjects.length === 0) {
-        const createResponse = await fetch(`${API_BASE}/projects`, {
+        const createResponse = await apiFetch(`${API_BASE}/projects`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'AI in Education', description: 'A shared space for research and writing.' }),
@@ -78,7 +108,7 @@ export default function HomePage() {
       setProjects(nextProjects);
 
       const documentGroups = await Promise.all(nextProjects.map(async (project) => {
-        const response = await fetch(`${API_BASE}/projects/${project.id}/documents`, { cache: 'no-store' });
+        const response = await apiFetch(`${API_BASE}/projects/${project.id}/documents`, { cache: 'no-store' });
         if (!response.ok) throw new Error(`Could not load documents for “${project.name}”.`);
         const rows: ApiDocument[] = await response.json();
         return rows.map((doc) => ({
@@ -93,7 +123,7 @@ export default function HomePage() {
       setDocuments(documentGroups.flat());
 
       if (nextProjects[0]) {
-        const activityResponse = await fetch(`${API_BASE}/projects/${nextProjects[0].id}/activity`, { cache: 'no-store' });
+        const activityResponse = await apiFetch(`${API_BASE}/projects/${nextProjects[0].id}/activity`, { cache: 'no-store' });
         if (activityResponse.ok) {
           const rows: ApiActivity[] = await activityResponse.json();
           setActivities(rows.map(activityView));
@@ -106,9 +136,9 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch, token]);
 
-  useEffect(() => { void loadWorkspace(); }, [loadWorkspace]);
+  useEffect(() => { if (token) void loadWorkspace(); }, [token, loadWorkspace]);
 
   const filtered = useMemo(() => documents.filter((doc) =>
     (doc.title.toLowerCase().includes(query.toLowerCase()) || doc.project.toLowerCase().includes(query.toLowerCase())) &&
@@ -122,7 +152,7 @@ export default function HomePage() {
     setSaving(true);
     setNotice('');
     try {
-      const response = await fetch(`${API_BASE}/projects/${project.id}/documents`, {
+      const response = await apiFetch(`${API_BASE}/projects/${project.id}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
@@ -152,9 +182,72 @@ export default function HomePage() {
     }
   }
 
+  async function submitAuth(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (authBusy) return;
+    setAuthBusy(true);
+    setAuthError('');
+    try {
+      const response = await fetch(API_BASE + '/auth/' + (authMode === 'login' ? 'login' : 'register'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim(),
+          password: authPassword,
+          ...(authMode === 'register' ? { displayName: authName.trim() } : {}),
+        }),
+      });
+      const result = await response.json().catch(() => ({})) as AuthResponse & { message?: string | string[] };
+      if (!response.ok || !result.accessToken) {
+        throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Authentication failed.');
+      }
+      sessionStorage.setItem('academic-collab-access-token', result.accessToken);
+      setToken(result.accessToken);
+      setAuthPassword('');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Authentication failed.');
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  function signOut() {
+    sessionStorage.removeItem('academic-collab-access-token');
+    setToken(null);
+    setProjects([]);
+    setDocuments([]);
+    setActivities([]);
+  }
+
   const awaitingReview = documents.filter((doc) => doc.status === 'In review').length;
   const totalDocuments = projects.reduce((sum, project) => sum + (project._count?.documents ?? 0), documents.length);
   const collaboratorCount = projects.reduce((sum, project) => sum + (project._count?.members ?? 1), 0);
+
+  if (authLoading) {
+    return <main className="auth-shell"><section className="auth-card"><span className="brand-mark">a.</span><p>Loading your secure workspace…</p></section></main>;
+  }
+
+  if (!token) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <a className="brand auth-brand" href="#"><span className="brand-mark">a.</span><span>academic<span className="brand-light">collab</span></span></a>
+          <p className="eyebrow">{authMode === 'login' ? 'WELCOME BACK' : 'YOUR STUDENT WORKSPACE'}</p>
+          <h1>{authMode === 'login' ? 'Good ideas start together.' : 'Make room for your next idea.'}</h1>
+          <p className="auth-description">{authMode === 'login' ? 'Sign in to continue working on your academic projects.' : 'Create an account to save projects and documents to your workspace.'}</p>
+          {authError && <div className="api-banner" role="alert">{authError}</div>}
+          <form className="auth-form" onSubmit={submitAuth}>
+            {authMode === 'register' && <label>Display name<input autoComplete="name" value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} maxLength={80} required placeholder="Your name" /></label>}
+            <label>Email address<input type="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required maxLength={254} placeholder="you@example.com" /></label>
+            <label>Password<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={authMode === 'register' ? 10 : 1} maxLength={128} required placeholder={authMode === 'register' ? 'At least 10 characters' : 'Your password'} /></label>
+            <button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'login' ? 'Sign in' : 'Create account'} <span>→</span></button>
+          </form>
+          <p className="auth-switch">{authMode === 'login' ? 'New to Academic Collab?' : 'Already have an account?'} <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}>{authMode === 'login' ? 'Create an account' : 'Sign in instead'}</button></p>
+          <p className="auth-footnote">Development release · Passwords are hashed by the API. Use a unique password; production deployment still needs rate limiting, email verification, and account recovery.</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -177,7 +270,7 @@ export default function HomePage() {
       </aside>
 
       <section className="main-panel" id="overview">
-        <header className="topbar"><div className="breadcrumbs">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Help">?</button><button className="notification-button" aria-label="Notifications">♧<i /></button><span className="top-avatar">DS</span></div></header>
+        <header className="topbar"><div className="breadcrumbs">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Help">?</button><button className="notification-button" aria-label="Notifications">♧<i /></button><button className="top-avatar signout-avatar" onClick={signOut} aria-label="Sign out">↗</button></div></header>
         <div className="page-content">
           <section className="welcome-row"><div><p className="eyebrow">YOUR COLLABORATION WORKSPACE</p><h1>Your ideas, <span>taking shape.</span></h1><p className="welcome-subtitle">Pick up where you left off or start something new with your team.</p></div><button className="primary-button" onClick={() => { setNotice(''); setShowCreate(true); }} disabled={!projects.length || loading}><span>＋</span> New document</button></section>
           {apiError && <div className="api-banner" role="alert"><strong>API connection issue</strong><span>{apiError}</span><button onClick={() => void loadWorkspace()}>Retry connection</button><small>Start PostgreSQL and the API, then refresh. The dashboard no longer pretends unsaved demo records are persisted.</small></div>}
