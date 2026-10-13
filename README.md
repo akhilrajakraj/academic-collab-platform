@@ -56,5 +56,5 @@ docs/                     Product and architecture documentation
 
 - Never commit real secrets.
 - Use a unique password and a strong local JWT secret.
-- Authentication is still missing rate limiting, email verification, and recovery flows.
+- Authentication includes basic per-process throttling for registration/login; email verification and recovery flows are still missing.
 - Do not deploy this early development release with real student data before security review and automated authorization tests.
