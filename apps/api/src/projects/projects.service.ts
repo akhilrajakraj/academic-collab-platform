@@ -81,6 +81,17 @@ export class ProjectsService {
     await this.prisma.project.delete({ where: { id: projectId } });
   }
 
+  async activity(projectId: string) {
+    const user = await this.identity.currentUser();
+    await this.requireMembership(projectId, user.id);
+    return this.prisma.activity.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      include: { actor: { select: { id: true, displayName: true } } },
+    });
+  }
+
   private async requireOwner(projectId: string, userId: string): Promise<void> {
     const membership = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
