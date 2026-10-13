@@ -162,7 +162,7 @@ export class DocumentsService {
 
   private async requireEditor(projectId: string, userId: string): Promise<void> {
     const role = await this.requireMembership(projectId, userId);
-    if (![ProjectRole.OWNER, ProjectRole.EDITOR].includes(role)) {
+    if (role !== ProjectRole.OWNER && role !== ProjectRole.EDITOR) {
       throw new ForbiddenException('Your project role does not allow document changes.');
     }
   }
