@@ -151,6 +151,49 @@ export class DocumentsService {
     });
   }
 
+
+  async restoreRevision(documentId: string, revisionId: string) {
+    const user = await this.identity.currentUser();
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, project: { members: { some: { userId: user.id } } } },
+    });
+    if (!document) throw new NotFoundException('Document not found.');
+    await this.requireEditor(document.projectId, user.id);
+    const revision = await this.prisma.documentRevision.findFirst({
+      where: { id: revisionId, documentId },
+    });
+    if (!revision) throw new NotFoundException('Revision not found for this document.');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.documentRevision.create({
+        data: {
+          documentId,
+          authorId: user.id,
+          title: document.title,
+          content: document.content as Prisma.InputJsonValue,
+        },
+      });
+      const restored = await tx.document.update({
+        where: { id: documentId },
+        data: { title: revision.title, content: revision.content as Prisma.InputJsonValue },
+      });
+      await tx.activity.create({
+        data: {
+          projectId: document.projectId,
+          actorId: user.id,
+          type: 'REVISION_RESTORED',
+          message: `Restored an earlier version of “${restored.title}”`,
+          metadata: { documentId, revisionId },
+        },
+      });
+      await tx.project.update({
+        where: { id: document.projectId },
+        data: { updatedAt: new Date() },
+      });
+      return restored;
+    });
+  }
+
   private async requireMembership(projectId: string, userId: string): Promise<ProjectRole> {
     const membership = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
