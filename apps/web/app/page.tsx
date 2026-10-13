@@ -22,7 +22,12 @@ function relativeTime(value: string): string {
 }
 
 function statusLabel(status: ApiDocument['status']): DocumentItem['status'] {
-  return ({ DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' })[status];
+  switch (status) {
+    case 'DRAFT': return 'Draft';
+    case 'IN_REVIEW': return 'In review';
+    case 'APPROVED': return 'Approved';
+    case 'ARCHIVED': return 'Archived';
+  }
 }
 
 function activityView(activity: ApiActivity): ActivityItem {
