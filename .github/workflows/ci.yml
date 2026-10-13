@@ -5,8 +5,35 @@ on:
   pull_request:
 
 jobs:
-  placeholder:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "CI scaffold ready; add lint, typecheck, test and build jobs as apps are implemented."
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The lockfile is regenerated once dependency versions are finalized.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @academic-collab/api prisma:generate
+
+      - name: Type-check workspaces
+        run: pnpm typecheck
+
+      - name: Lint workspaces
+        run: pnpm lint
+
+      - name: Build workspaces
+        run: pnpm build
