@@ -1,6 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentStatus, Prisma, ProjectRole } from '@prisma/client';
-import { DemoIdentityService } from '../demo-identity/demo-identity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
@@ -14,12 +13,10 @@ const emptyDocument: Prisma.InputJsonValue = {
 export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly identity: DemoIdentityService,
   ) {}
 
-  async listForProject(projectId: string) {
-    const user = await this.identity.currentUser();
-    await this.requireMembership(projectId, user.id);
+  async listForProject(projectId: string, userId: string) {
+    await this.requireMembership(projectId, userId);
     return this.prisma.document.findMany({
       where: { projectId },
       orderBy: { updatedAt: 'desc' },
@@ -27,8 +24,7 @@ export class DocumentsService {
     });
   }
 
-  async createForProject(projectId: string, dto: CreateDocumentDto) {
-    const user = await this.identity.currentUser();
+  async createForProject(projectId: string, dto: CreateDocumentDto, userId: string) {
     await this.requireEditor(projectId, user.id);
     return this.prisma.$transaction(async (tx) => {
       const document = await tx.document.create({
@@ -53,8 +49,7 @@ export class DocumentsService {
     });
   }
 
-  async get(documentId: string) {
-    const user = await this.identity.currentUser();
+  async get(documentId: string, userId: string) {
     const document = await this.prisma.document.findFirst({
       where: {
         id: documentId,
@@ -69,8 +64,7 @@ export class DocumentsService {
     return document;
   }
 
-  async update(documentId: string, dto: UpdateDocumentDto) {
-    const user = await this.identity.currentUser();
+  async update(documentId: string, dto: UpdateDocumentDto, userId: string) {
     const existing = await this.prisma.document.findFirst({
       where: {
         id: documentId,
@@ -116,8 +110,7 @@ export class DocumentsService {
     });
   }
 
-  async remove(documentId: string) {
-    const user = await this.identity.currentUser();
+  async remove(documentId: string, userId: string) {
     const existing = await this.prisma.document.findFirst({
       where: {
         id: documentId,
@@ -134,8 +127,7 @@ export class DocumentsService {
     });
   }
 
-  async revisions(documentId: string) {
-    const user = await this.identity.currentUser();
+  async revisions(documentId: string, userId: string) {
     const document = await this.prisma.document.findFirst({
       where: {
         id: documentId,
@@ -152,8 +144,7 @@ export class DocumentsService {
   }
 
 
-  async restoreRevision(documentId: string, revisionId: string) {
-    const user = await this.identity.currentUser();
+  async restoreRevision(documentId: string, revisionId: string, userId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, project: { members: { some: { userId: user.id } } } },
     });
