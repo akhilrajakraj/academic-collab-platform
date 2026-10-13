@@ -55,7 +55,7 @@ IDs are UUIDs; timestamps are stored in UTC; membership roles and foreign keys d
 1. **Foundation — implemented:** workspace scripts, environment template, health endpoint, database schema, and dashboard shell.
 2. **Project/document workflow — first slice implemented:** project CRUD, demo owner membership, document CRUD, activity, revisions, and dashboard API integration.
 3. **Identity and team workflow — next:** real authentication, invite/add/remove members, roles UI, and integration tests.
-4. **Writing workflow:** Tiptap editor, autosave, revision restore, comments, and export jobs.
+4. **Writing workflow — API slice added:** document comments can be listed/created/resolved/deleted with membership checks; prior revisions can be restored while preserving the pre-restore version. Tiptap editor, autosave, comment anchoring UI, and export jobs remain planned.
 5. **Collaboration:** Yjs/WebSocket collaboration, presence, conflict handling, and robust activity feed.
 6. **Hardening:** authorization tests, rate limits, observability, backups, accessibility, and deployment.
 
