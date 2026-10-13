@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { Prisma, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
@@ -26,7 +26,7 @@ export class CommentsService {
           documentId,
           authorId: userId,
           body: dto.body.trim(),
-          ...(dto.anchor ? { anchor: dto.anchor } : {}),
+          ...(dto.anchor ? { anchor: dto.anchor as Prisma.InputJsonValue } : {}),
         },
         include: { author: { select: { id: true, displayName: true, avatarUrl: true } } },
       });
