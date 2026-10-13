@@ -276,7 +276,7 @@ export default function HomePage() {
           {projects.map((project, index) => <a className="nav-item project-link" href={`#project-${project.id}`} key={project.id}><span className={`project-dot ${['dot-purple', 'dot-blue', 'dot-orange'][index % 3]}`} /> {project.name}</a>)}
           {!projects.length && !loading && <span className="nav-item project-link">No projects yet</span>}
         </nav>
-        <div className="sidebar-bottom"><div className="help-card"><span className="help-icon">✳</span><strong>Need a hand?</strong><p>Explore guides to make your next project better.</p><a href="#guides">Browse learning guides <span>↗</span></a></div><button className="profile-button"><span className="profile-avatar">DS</span><span className="profile-copy"><strong>Demo Student</strong><small>Local demo identity</small></span><span className="chevron">···</span></button></div>
+        <div className="sidebar-bottom"><div className="help-card"><span className="help-icon">✳</span><strong>Need a hand?</strong><p>Explore guides to make your next project better.</p><a href="#guides">Browse learning guides <span>↗</span></a></div><button className="profile-button"><span className="profile-avatar">{(account?.displayName || "My Account").split(/\\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span><span className="profile-copy"><strong>{account?.displayName || "My account"}</strong><small>{account?.email || "Signed-in account"}</small></span><button className="signout-small" onClick={signOut}>Sign out</button></button></div>
       </aside>
 
       <section className="main-panel" id="overview">
