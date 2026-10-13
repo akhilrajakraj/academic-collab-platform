@@ -1,0 +1,97 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ProjectRole } from '@prisma/client';
+import { DemoIdentityService } from '../demo-identity/demo-identity.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateCommentDto } from './dto/create-comment.dto';
+
+@Injectable()
+export class CommentsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly identity: DemoIdentityService,
+  ) {}
+
+  async list(documentId: string) {
+    const user = await this.identity.currentUser();
+    await this.requireDocument(documentId, user.id);
+    return this.prisma.comment.findMany({
+      where: { documentId },
+      orderBy: { createdAt: 'asc' },
+      include: { author: { select: { id: true, displayName: true, avatarUrl: true } } },
+    });
+  }
+
+  async create(documentId: string, dto: CreateCommentDto) {
+    const user = await this.identity.currentUser();
+    const document = await this.requireDocument(documentId, user.id);
+    return this.prisma.$transaction(async (tx) => {
+      const comment = await tx.comment.create({
+        data: {
+          documentId,
+          authorId: user.id,
+          body: dto.body.trim(),
+          ...(dto.anchor ? { anchor: dto.anchor } : {}),
+        },
+        include: { author: { select: { id: true, displayName: true, avatarUrl: true } } },
+      });
+      await tx.activity.create({
+        data: {
+          projectId: document.projectId,
+          actorId: user.id,
+          type: 'COMMENT_ADDED',
+          message: `Commented on “${document.title}”`,
+          metadata: { documentId, commentId: comment.id },
+        },
+      });
+      return comment;
+    });
+  }
+
+  async setResolved(commentId: string, resolved: boolean) {
+    const user = await this.identity.currentUser();
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
+      include: { document: { select: { projectId: true } } },
+    });
+    if (!comment) throw new NotFoundException('Comment not found.');
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId: comment.document.projectId, userId: user.id } },
+      select: { role: true },
+    });
+    if (!membership || membership.role === ProjectRole.VIEWER) {
+      throw new ForbiddenException('Your project role cannot resolve comments.');
+    }
+    return this.prisma.comment.update({
+      where: { id: commentId },
+      data: { resolvedAt: resolved ? new Date() : null },
+      include: { author: { select: { id: true, displayName: true, avatarUrl: true } } },
+    });
+  }
+
+  async remove(commentId: string) {
+    const user = await this.identity.currentUser();
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, document: { project: { members: { some: { userId: user.id } } } } },
+      include: { document: { select: { projectId: true } } },
+    });
+    if (!comment) throw new NotFoundException('Comment not found.');
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId: comment.document.projectId, userId: user.id } },
+      select: { role: true },
+    });
+    if (comment.authorId !== user.id && membership?.role !== ProjectRole.OWNER && membership?.role !== ProjectRole.EDITOR) {
+      throw new ForbiddenException('You can only delete your own comments.');
+    }
+    await this.prisma.comment.delete({ where: { id: commentId } });
+    return { deleted: true };
+  }
+
+  private async requireDocument(documentId: string, userId: string) {
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, project: { members: { some: { userId } } } },
+      select: { id: true, title: true, projectId: true },
+    });
+    if (!document) throw new NotFoundException('Document not found.');
+    return document;
+  }
+}
