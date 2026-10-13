@@ -53,6 +53,14 @@ export class DocumentsController {
     return { deleted: true };
   }
 
+  @Post(':documentId/revisions/:revisionId/restore')
+  restoreRevision(
+    @Param('documentId', new ParseUUIDPipe()) documentId: string,
+    @Param('revisionId', new ParseUUIDPipe()) revisionId: string,
+  ) {
+    return this.documents.restoreRevision(documentId, revisionId);
+  }
+
   @Get(':documentId/revisions')
   revisions(@Param('documentId', new ParseUUIDPipe()) documentId: string) {
     return this.documents.revisions(documentId);
