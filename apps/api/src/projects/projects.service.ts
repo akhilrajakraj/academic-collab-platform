@@ -31,12 +31,12 @@ export class ProjectsService {
         },
       });
       await tx.projectMember.create({
-        data: { projectId: project.id, userId: user.id, role: ProjectRole.OWNER },
+        data: { projectId: project.id, userId: userId, role: ProjectRole.OWNER },
       });
       await tx.activity.create({
         data: {
           projectId: project.id,
-          actorId: user.id,
+          actorId: userId,
           type: 'PROJECT_CREATED',
           message: `Created project “${project.name}”`,
         },
@@ -50,7 +50,7 @@ export class ProjectsService {
 
   async get(projectId: string, userId: string) {
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, members: { some: { userId: user.id } } },
+      where: { id: projectId, members: { some: { userId: userId } } },
       include: projectSummary,
     });
     if (!project) throw new NotFoundException('Project not found.');
