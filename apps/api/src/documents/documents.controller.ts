@@ -5,6 +5,7 @@ import { CurrentUserId } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { RestoreRevisionDto } from './dto/restore-revision.dto';
 import { DocumentsService } from './documents.service';
 
 @UseGuards(JwtAuthGuard)
@@ -61,8 +62,9 @@ export class DocumentsController {
   restoreRevision(
     @Param('documentId', new ParseUUIDPipe()) documentId: string,
     @Param('revisionId', new ParseUUIDPipe()) revisionId: string,
+    @Body() dto: RestoreRevisionDto,
     @CurrentUserId() userId: string,
   ) {
-    return this.documents.restoreRevision(documentId, revisionId, userId);
+    return this.documents.restoreRevision(documentId, revisionId, userId, dto.expectedUpdatedAt);
   }
 }
