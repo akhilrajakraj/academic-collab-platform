@@ -12,7 +12,10 @@
   "dependencies": {
     "next": "^15.2.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
+    "@tiptap/extension-placeholder": "^2.11.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
