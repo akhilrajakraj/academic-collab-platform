@@ -8,6 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2022",
     "sourceMap": true,
+    "ignoreDeprecations": "6.0",
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
