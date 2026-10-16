@@ -83,6 +83,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@tiptap/core':
+        specifier: ^2.11.7
+        version: 2.27.3(@tiptap/pm@2.27.3)
+      '@tiptap/extension-text-style':
+        specifier: ^2.11.7
+        version: 2.27.3(@tiptap/core@2.27.3(@tiptap/pm@2.27.3))
       '@tiptap/extension-placeholder':
         specifier: ^2.11.7
         version: 2.27.3(@tiptap/core@2.27.3(@tiptap/pm@2.27.3))(@tiptap/pm@2.27.3)
