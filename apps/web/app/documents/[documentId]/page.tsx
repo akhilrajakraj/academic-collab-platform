@@ -303,7 +303,7 @@ export default function DocumentEditorPage() {
       setError(messageOf(result, 'Revision could not be restored.'));
       return;
     }
-    setDocument(result);
+    setDocument((current) => current ? { ...current, ...result, project: current.project } : current);
     setTitle(result.title);
     titleRef.current = result.title;
     setStatus(result.status);
