@@ -7,7 +7,7 @@ type Project = { id: string; name: string; description?: string | null };
 type ApiDocument = { id: string; projectId: string; title: string; status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'ARCHIVED'; updatedAt: string; project?: { name: string } };
 type SharedDocument = { id: string; title: string; status: ApiDocument['status']; updatedAt: string; project: { id: string; name: string }; createdBy?: { displayName?: string; email?: string } };
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
-const label = (status: ApiDocument['status']) => ({ DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' }[status] || 'Draft');
+const label = (status: ApiDocument['status']): 'Draft' | 'In review' | 'Approved' | 'Archived' => { const labels: Record<ApiDocument['status'], 'Draft' | 'In review' | 'Approved' | 'Archived'> = { DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' }; return labels[status]; };
 
 export default function SharedPage() {
   const [token, setToken] = useState<string | null>(null);
