@@ -557,3 +557,49 @@ body { font-size: 14px; line-height: 1.5; }
   .editor-canvas .tiptap-content { border: 0 !important; outline: 0 !important; }
   .editor-canvas .tiptap-content::after { display: none !important; }
 }
+
+
+/* M04: configurable paper size, orientation, margins and page break surface. */
+.editor-canvas.page-size-a4 .tiptap-content { max-width: 794px; }
+.editor-canvas.page-size-letter .tiptap-content { max-width: 816px; }
+.editor-canvas.page-size-legal .tiptap-content { max-width: 816px; min-height: 1056px; }
+.editor-canvas.page-orientation-landscape .tiptap-content { max-width: 1123px; min-height: 794px; }
+.editor-canvas.page-orientation-landscape.page-size-letter .tiptap-content,
+.editor-canvas.page-orientation-landscape.page-size-legal .tiptap-content { max-width: 1056px; min-height: 816px; }
+.editor-canvas.page-margins-narrow .tiptap-content { padding: 38px; }
+.editor-canvas.page-margins-normal .tiptap-content { padding: 68px clamp(28px, 7vw, 84px); }
+.editor-canvas.page-margins-wide .tiptap-content { padding: 92px clamp(36px, 10vw, 112px); }
+.editor-canvas.page-border-none .tiptap-content { outline: 0; }
+.editor-canvas.page-border-single .tiptap-content::after { border-style: solid; }
+.editor-canvas.page-border-double .tiptap-content::after { border: 3px double #b9c5b3; }
+.editor-canvas .tiptap-content [data-page-break] {
+  height: 0;
+  margin: 1.5em 0;
+  border: 0;
+  border-top: 2px dashed #9aa795;
+  position: relative;
+  page-break-after: always;
+  break-after: page;
+}
+.editor-canvas .tiptap-content [data-page-break]::after {
+  content: "Page break";
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  padding: 0 8px;
+  background: #fffefa;
+  color: #7b887c;
+  font: 10px/1.5 sans-serif;
+  transform: translateX(-50%);
+}
+@media print {
+  .editor-canvas.page-size-a4 .tiptap-content { width: 210mm; }
+  .editor-canvas.page-size-letter .tiptap-content { width: 8.5in; }
+  .editor-canvas.page-size-legal .tiptap-content { width: 8.5in; }
+  .editor-canvas.page-orientation-landscape .tiptap-content { width: 297mm; }
+  .editor-canvas.page-margins-narrow .tiptap-content { padding: 12.7mm !important; }
+  .editor-canvas.page-margins-normal .tiptap-content { padding: 25.4mm !important; }
+  .editor-canvas.page-margins-wide .tiptap-content { padding: 38.1mm !important; }
+  .editor-canvas .tiptap-content [data-page-break] { height: 0; margin: 0; border: 0; }
+  .editor-canvas .tiptap-content [data-page-break]::after { display: none; }
+}
