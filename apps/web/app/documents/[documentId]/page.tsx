@@ -230,8 +230,7 @@ export default function DocumentEditorPage() {
       setError('Save your current edits before changing the document status.');
       return;
     }
-    setStatus(nextStatus);
-    setSaveState('dirty');
+    setSaveState('saving');
     setNotice('');
     const response = await apiFetch(`${API_BASE}/documents/${document.id}`, {
       method: 'PATCH',
@@ -245,13 +244,13 @@ export default function DocumentEditorPage() {
       return;
     }
     if (!response.ok) {
-      setStatus(document.status);
       setError(messageOf(result, 'Could not update document status.'));
       setSaveState('failed');
       return;
     }
     updatedAtRef.current = result.updatedAt;
     setDocument(result);
+    setStatus(nextStatus);
     baselineRef.current = JSON.stringify({ title: titleRef.current.trim(), content: contentRef.current, status: nextStatus });
     setSaveState('saved');
     setNotice('Document status updated.');
