@@ -176,7 +176,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [apiFetch, token]);
+  }, [apiFetch, selectedProjectId, token]);
 
   useEffect(() => { if (token) void loadWorkspace(); }, [token, loadWorkspace]);
 
