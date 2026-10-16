@@ -12,7 +12,7 @@ A collaborative writing workspace for students to plan projects, write documents
 - Project CRUD with owner membership checks, document CRUD, activity records, revision snapshots and restoration, and comment APIs.
 - GitHub Actions workflow for workspace validation.
 
-**Still planned:** invitation/member-management UI, Tiptap rich-text editor, autosave, real-time collaboration with Yjs, anchored comment UI, PDF/DOCX export, notifications, AI features, email verification, password recovery, rate limiting, and production security hardening. Registration and login are an initial authentication slice, not yet a complete production identity system.
+**Still planned:** Yjs-powered shared document synchronization and persistence, anchored comment UI, PDF/DOCX export, notifications, AI features, email verification, password recovery, and production security hardening. Real-time presence is implemented as an early collaboration foundation, not as concurrent text synchronization. Registration and login are an initial authentication slice, not yet a complete production identity system.
 
 ## Technology
 
@@ -20,7 +20,9 @@ A collaborative writing workspace for students to plan projects, write documents
 - API: NestJS, TypeScript, JWT, bcrypt
 - Data: PostgreSQL, Prisma
 - Local infrastructure: Docker Compose, Redis, MinIO
-- Planned editor: Tiptap + Yjs
+- Editor: Tiptap
+- Real-time presence: Socket.IO with JWT-authenticated namespace middleware and project membership checks
+- Planned shared editing: Yjs (not yet wired to the persisted document model)
 
 ## Requirements
 
@@ -58,3 +60,16 @@ docs/                     Product and architecture documentation
 - Use a unique password and a strong local JWT secret.
 - Authentication includes basic per-process throttling for registration/login; email verification and recovery flows are still missing.
 - Do not deploy this early development release with real student data before security review and automated authorization tests.
+
+
+## Development roadmap
+
+The implementation is divided into independently reviewable modules covering platform foundation, identity and access control, project membership, document editing, review and revisions, real-time collaboration, export, academic assistance, and release readiness. See [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md) for current status, delivery order, verification criteria, and end-to-end acceptance scenario.
+
+### Project collaboration API
+
+The project invitation and membership endpoints, role rules, token lifecycle, and known limitations are documented in [docs/PROJECT_COLLABORATION_API.md](docs/PROJECT_COLLABORATION_API.md). Invitation email delivery is not yet implemented; development invitations return a one-time token for secure out-of-band sharing.
+
+### Document editing workspace
+
+The development branch includes a Tiptap editor at `/documents/:documentId`, with structured JSON persistence, debounced autosave, save-state feedback, stale-write conflict handling, revision history/restore, comments, and document status controls. The M5 foundation adds authenticated Socket.IO presence in document rooms and a live collaborator panel. It does not yet synchronize text changes between browsers; Yjs persistence, runtime PostgreSQL verification, and end-to-end two-client tests remain outstanding.

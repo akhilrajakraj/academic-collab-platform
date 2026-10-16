@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -6,6 +6,7 @@ export class RegisterDto {
   email!: string;
 
   @IsString()
+  @Matches(/\\S/, { message: 'Display name cannot be blank.' })
   @MinLength(2)
   @MaxLength(80)
   displayName!: string;

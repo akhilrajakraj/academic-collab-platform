@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentStatus, Prisma, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -74,6 +74,39 @@ export class DocumentsService {
     if (!existing) throw new NotFoundException('Document not found.');
     await this.requireEditor(existing.projectId, userId);
 
+    if (dto.status !== undefined && dto.status !== existing.status) {
+      const role = await this.requireMembership(existing.projectId, userId);
+      const ownerOnlyTransition = dto.status === DocumentStatus.ARCHIVED
+        || existing.status === DocumentStatus.ARCHIVED;
+      if (ownerOnlyTransition && role !== ProjectRole.OWNER) {
+        throw new ForbiddenException('Only the project owner can archive or reopen a document.');
+      }
+
+      const allowedTransitions: Record<DocumentStatus, DocumentStatus[]> = {
+        [DocumentStatus.DRAFT]: [DocumentStatus.IN_REVIEW, DocumentStatus.ARCHIVED],
+        [DocumentStatus.IN_REVIEW]: [DocumentStatus.DRAFT, DocumentStatus.APPROVED, DocumentStatus.ARCHIVED],
+        [DocumentStatus.APPROVED]: [DocumentStatus.DRAFT, DocumentStatus.ARCHIVED],
+        [DocumentStatus.ARCHIVED]: [DocumentStatus.DRAFT],
+      };
+      if (!allowedTransitions[existing.status].includes(dto.status)) {
+        throw new BadRequestException(
+          `Document status cannot move from ${existing.status} to ${dto.status}.`,
+        );
+      }
+    }
+
+    const expectedUpdatedAt = dto.expectedUpdatedAt
+      ? new Date(dto.expectedUpdatedAt)
+      : existing.updatedAt;
+
+    if (expectedUpdatedAt.getTime() !== existing.updatedAt.getTime()) {
+      throw new ConflictException({
+        code: 'DOCUMENT_VERSION_CONFLICT',
+        message: 'This document changed after you opened it. Reload the latest version before saving.',
+        currentUpdatedAt: existing.updatedAt.toISOString(),
+      });
+    }
+
     return this.prisma.$transaction(async (tx) => {
       if (dto.title !== undefined || dto.content !== undefined) {
         await tx.documentRevision.create({
@@ -85,14 +118,21 @@ export class DocumentsService {
           },
         });
       }
-      const updated = await tx.document.update({
-        where: { id: existing.id },
+      const write = await tx.document.updateMany({
+        where: { id: existing.id, updatedAt: expectedUpdatedAt },
         data: {
           ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
           ...(dto.content !== undefined ? { content: dto.content as Prisma.InputJsonValue } : {}),
           ...(dto.status !== undefined ? { status: dto.status } : {}),
         },
       });
+      if (write.count !== 1) {
+        throw new ConflictException({
+          code: 'DOCUMENT_VERSION_CONFLICT',
+          message: 'This document changed while you were saving. Reload the latest version before saving again.',
+        });
+      }
+      const updated = await tx.document.findUniqueOrThrow({ where: { id: existing.id } });
       await tx.activity.create({
         data: {
           projectId: existing.projectId,
@@ -144,7 +184,12 @@ export class DocumentsService {
   }
 
 
-  async restoreRevision(documentId: string, revisionId: string, userId: string) {
+  async restoreRevision(
+    documentId: string,
+    revisionId: string,
+    userId: string,
+    expectedUpdatedAt?: string,
+  ) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, project: { members: { some: { userId: userId } } } },
     });
@@ -155,6 +200,15 @@ export class DocumentsService {
     });
     if (!revision) throw new NotFoundException('Revision not found for this document.');
 
+    const expected = expectedUpdatedAt ? new Date(expectedUpdatedAt) : document.updatedAt;
+    if (expected.getTime() !== document.updatedAt.getTime()) {
+      throw new ConflictException({
+        code: 'DOCUMENT_VERSION_CONFLICT',
+        message: 'This document changed after you opened it. Reload the latest version before restoring a revision.',
+        currentUpdatedAt: document.updatedAt.toISOString(),
+      });
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await tx.documentRevision.create({
         data: {
@@ -164,10 +218,17 @@ export class DocumentsService {
           content: document.content as Prisma.InputJsonValue,
         },
       });
-      const restored = await tx.document.update({
-        where: { id: documentId },
+      const write = await tx.document.updateMany({
+        where: { id: documentId, updatedAt: expected },
         data: { title: revision.title, content: revision.content as Prisma.InputJsonValue },
       });
+      if (write.count !== 1) {
+        throw new ConflictException({
+          code: 'DOCUMENT_VERSION_CONFLICT',
+          message: 'This document changed while the revision was being restored. Reload the latest version and try again.',
+        });
+      }
+      const restored = await tx.document.findUniqueOrThrow({ where: { id: documentId } });
       await tx.activity.create({
         data: {
           projectId: document.projectId,

@@ -20,6 +20,13 @@ export class CommentsService {
 
   async create(documentId: string, dto: CreateCommentDto, userId: string) {
     const document = await this.requireDocument(documentId, userId);
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId: document.projectId, userId } },
+      select: { role: true },
+    });
+    if (!membership || membership.role === ProjectRole.VIEWER) {
+      throw new ForbiddenException('Your project role does not allow adding comments.');
+    }
     return this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
         data: {
@@ -73,7 +80,10 @@ export class CommentsService {
       where: { projectId_userId: { projectId: comment.document.projectId, userId: userId } },
       select: { role: true },
     });
-    if (comment.authorId !== userId && membership?.role !== ProjectRole.OWNER && membership?.role !== ProjectRole.EDITOR) {
+    if (!membership || membership.role === ProjectRole.VIEWER) {
+      throw new ForbiddenException('Your project role does not allow deleting comments.');
+    }
+    if (comment.authorId !== userId && membership.role !== ProjectRole.OWNER && membership.role !== ProjectRole.EDITOR) {
       throw new ForbiddenException('You can only delete your own comments.');
     }
     await this.prisma.comment.delete({ where: { id: commentId } });

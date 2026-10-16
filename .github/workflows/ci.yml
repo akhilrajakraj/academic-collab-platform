@@ -22,9 +22,8 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # The lockfile is regenerated once dependency versions are finalized.
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: pnpm --filter @academic-collab/api prisma:generate
