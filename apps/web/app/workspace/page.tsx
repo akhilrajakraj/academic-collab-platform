@@ -376,7 +376,16 @@ export default function HomePage() {
   const collaboratorCount = projects.reduce((sum, project) => sum + (project._count?.members ?? 1), 0);
 
   if (authLoading) {
-    return <main className="auth-shell"><section className="auth-card"><span className="brand-mark">a.</span><p>Loading your secure workspace…</p></section></main>;
+    return (
+      <main className="auth-shell auth-loading-shell" aria-busy="true" aria-live="polite">
+        <section className="auth-card auth-loading-card">
+          <span className="brand-mark">a.</span>
+          <span className="loading-spinner" role="status" aria-label="Loading" />
+          <h1>Preparing your workspace</h1>
+          <p>Checking your session and getting everything ready…</p>
+        </section>
+      </main>
+    );
   }
 
   if (!token) {
@@ -408,10 +417,10 @@ export default function HomePage() {
         <div className="workspace-switch"><span className="workspace-avatar">AC</span><span className="workspace-copy"><strong>Student workspace</strong><small>Local demo</small></span><span className="chevron">⌄</span></div>
         <p className="nav-label">WORKSPACE</p>
         <nav className="navigation" aria-label="Main navigation">
-          <a className="nav-item active" href="#overview"><span>▦</span> Overview</a>
-          <a className="nav-item" href="#projects"><span>◫</span> My projects <span className="nav-count">{projects.length}</span></a>
-          <a className="nav-item" href="#documents"><span>▤</span> Documents</a>
-          <a className="nav-item" href="#shared"><span>♧</span> Shared with me</a>
+          <a className="nav-item active" href="#overview"><span className="nav-icon" data-tooltip="Workspace overview" aria-hidden="true">▦</span> Overview</a>
+          <a className="nav-item" href="#projects"><span className="nav-icon" data-tooltip="Your projects" aria-hidden="true">◫</span> My projects <span className="nav-count">{projects.length}</span></a>
+          <a className="nav-item" href="#documents"><span className="nav-icon" data-tooltip="Project documents" aria-hidden="true">▤</span> Documents</a>
+          <a className="nav-item" href="#shared"><span className="nav-icon" data-tooltip="Documents and projects shared with you" aria-hidden="true">♧</span> Shared with me</a>
         </nav>
         <p className="nav-label second-label">YOUR PROJECTS <button className="tiny-add" onClick={() => setNotice('Project creation is the next UI workflow; use POST /api/v1/projects for now.')} aria-label="Project creation info">+</button></p>
         <nav className="navigation project-navigation" aria-label="Your projects">
@@ -467,7 +476,7 @@ export default function HomePage() {
             <div className="documents-section" id="documents">
               <div className="section-heading"><div><h2>Recent documents</h2><p>Your team’s work, all in one place.</p></div><a href="#all-documents">View all <span>→</span></a></div>
               <div className="document-toolbar"><label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search documents..." aria-label="Search documents" /></label><label className="filter-select"><span className="sr-only">Filter documents</span><select value={selectedFilter} onChange={(event) => setSelectedFilter(event.target.value)}><option>All documents</option><option>Draft</option><option>In review</option><option>Approved</option><option>Archived</option></select></label></div>
-              <div className="document-list">{loading ? <div className="empty-state"><strong>Loading your workspace…</strong><p>Connecting to the project API.</p></div> : filtered.map((doc) => <article className="document-row" key={doc.id}><div className="document-icon">▤</div><div className="document-main"><a className="document-title-link" href={`/documents/${doc.id}`}>{doc.title}</a><span>{doc.project}</span></div><span className={'status status-' + doc.status.toLowerCase().replace(' ', '-')}>{doc.status}</span><span className="document-updated">{doc.updated}</span><a className="document-open-link" href={`/documents/${doc.id}`} aria-label={`Open ${doc.title}`}>Open →</a></article>)}{!loading && filtered.length === 0 && <div className="empty-state"><strong>{apiError ? 'Workspace unavailable' : 'No documents yet'}</strong><p>{apiError ? 'Reconnect to the API to load your documents.' : 'Create your first document to get started.'}</p></div>}</div>
+              <div className="document-list">{loading ? <div className="workspace-loading" role="status" aria-live="polite"><span className="loading-spinner" aria-hidden="true" /><div><strong>Loading your workspace…</strong><p>Syncing your projects and documents.</p></div></div> : filtered.map((doc) => <article className="document-row" key={doc.id}><div className="document-icon">▤</div><div className="document-main"><a className="document-title-link" href={`/documents/${doc.id}`}>{doc.title}</a><span>{doc.project}</span></div><span className={'status status-' + doc.status.toLowerCase().replace(' ', '-')}>{doc.status}</span><span className="document-updated">{doc.updated}</span><a className="document-open-link" href={`/documents/${doc.id}`} aria-label={`Open ${doc.title}`}>Open →</a></article>)}{!loading && filtered.length === 0 && <div className="empty-state"><strong>{apiError ? 'Workspace unavailable' : 'No documents yet'}</strong><p>{apiError ? 'Reconnect to the API to load your documents.' : 'Create your first document to get started.'}</p></div>}</div>
               <button className="secondary-button full-button" onClick={() => { setNotice(''); setShowCreate(true); }} disabled={!projects.length || loading}>＋ Create a document</button>
             </div>
             <aside className="activity-section"><div className="section-heading"><div><h2>Recent activity</h2><p>Latest changes from your projects.</p></div><button className="more-button" aria-label="Refresh activity" onClick={() => void loadWorkspace()}>↻</button></div><div className="activity-list">{activities.map((activity, index) => <div className="activity-item" key={index}><span className={'activity-avatar avatar-' + activity.color}>{activity.initials}</span><div className="activity-copy"><p><strong>{activity.title}</strong> {activity.action} <a href="#activity">{activity.target}</a></p><span>{activity.time}</span></div></div>)}{!loading && !activities.length && <div className="empty-state compact-empty"><p>New project and document activity will appear here.</p></div>}</div><a className="activity-link" href="#all-activity" onClick={(event) => event.preventDefault()}>Recent project events <span>→</span></a><div className="tip-card"><span className="tip-sparkle">✦</span><p className="tip-label">NEXT UP</p><h3>Build your writing workflow.</h3><p>Projects and documents now save through the API. Authentication, a rich-text editor, and real-time collaboration are still planned.</p><a href="https://github.com/akhilrajakraj/academic-collab-platform">View project on GitHub <span>↗</span></a></div></aside>
