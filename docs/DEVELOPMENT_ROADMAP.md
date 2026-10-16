@@ -13,20 +13,22 @@ A student can create a project, invite collaborators, co-author a structured doc
 | M0 — Platform foundation | pnpm workspace, Next.js web app, NestJS API, Prisma/PostgreSQL, local Docker services, CI | Existing foundation; verification required | Clean install, migrations, build, lint/typecheck, health checks pass |
 | M1 — Identity and access control | Registration/login, token validation, project membership, role policy, validation, security baseline | Existing basics; hardening in progress | Cross-account and role-based API tests prove no unauthorized reads/writes |
 | M2 — Project and membership collaboration | Project lifecycle, invitations, accept/decline/expire/revoke, role management, member UI | Invitation API, schema migration and team UI implemented on this branch; runtime verification pending | Owner invites a collaborator and can safely change/revoke membership |
-| M3 — Document editing and persistence | Rich-text editor, structured content, autosave, save state, stale-write protection | API persistence/revisions exist; stale-write protection in progress; editor planned | Edits survive refresh and concurrent stale saves return a conflict instead of overwriting |
+| M3 — Document editing and persistence | Rich-text editor, structured content, autosave, save state, stale-write protection | Tiptap editor route and debounced autosave implemented on this branch; CI and runtime verification pending | Edits survive refresh and concurrent stale saves return a conflict instead of overwriting |
 | M4 — Review and revision workflow | Comments, anchored comments, resolve/reopen, document status transitions, revision history/restore | Basic comment and revision APIs exist; full UI/workflow planned | Reviewers can comment; permitted editors manage status; old versions can be restored safely |
 | M5 — Real-time collaboration | Yjs document model, WebSocket provider, presence, reconnect/recovery, server-side authorization | Planned | Two clients can edit concurrently and converge after reconnect |
 | M6 — Export and file handling | PDF/DOCX export, templates, background jobs, object storage, export history | Planned; MinIO is configured for local development | Exported file opens correctly and preserves document structure |
 | M7 — Academic assistance | Opt-in outline suggestions, writing feedback, citation assistance, source-aware suggestions | Planned | AI output is reviewable, source-aware where applicable, and never silently replaces user text |
 | M8 — Release readiness | Accessibility, observability, backups, rate limits, security headers, deployment/runbooks | Partial foundation; verification required | Reproducible release, documented recovery, security and accessibility checks pass |
 
-## Current implementation focus: M1 API correctness and M2 membership collaboration
+## Current implementation focus: M3 writing experience (M1–M2 verification still required)
 
 ### Delivered on this development branch
 
 - M2 adds a `ProjectInvitation` data model and migration with seven-day expiry, lifecycle state, assignable roles, and a SHA-256 token hash; the raw invitation token is returned only at creation.
 - M2 adds owner-authorized endpoints to create/list/revoke invitations, list members, change non-owner member roles, and remove non-owner members. Authenticated invitees can accept or decline a token only when their account email matches the invited email.
 - M2 adds a responsive team panel to the dashboard for member roles, invitation creation, one-time token display/copy, invitation status, revocation and acceptance.
+- M3 adds a dedicated `/documents/:documentId` editor route with Tiptap formatting controls, document title/status editing, comments, revision history and restore controls.
+- M3 autosaves after a short typing pause, sends `expectedUpdatedAt` with writes, exposes save states, and stops automatic retries on a version conflict. Revision restores now also use a version precondition and return a conflict instead of overwriting a newer edit.
 - M1 input validation now rejects whitespace-only display names, project names, document titles and comment bodies.
 - Document status updates now follow an explicit transition matrix. Only the project owner can archive or reopen archived documents; invalid transitions return HTTP 400.
 - Added optional `expectedUpdatedAt` to the document update DTO. Clients can send the ISO-8601 `updatedAt` value returned by the document API.
@@ -58,10 +60,9 @@ A student can create a project, invite collaborators, co-author a structured doc
 - Remaining: send actual email invitations, add resend/expired-state cleanup, and verify lifecycle/concurrency behavior with automated tests.
 
 ### M3.1 — Writing experience
-- Add a Tiptap editor using the document JSON format already stored by the API.
-- Add debounced autosave with explicit Saving / Saved / Failed states.
-- Send `expectedUpdatedAt` on every save; handle 409 by offering reload/compare rather than overwriting.
-- Add title editing, keyboard accessibility and unsaved-change handling.
+- Implemented on this branch: Tiptap editor using the existing document JSON format; formatting toolbar; editable title; debounced autosave and save-state indicators.
+- Implemented on this branch: conflict detection and reload path for stale writes; version-preconditioned revision restoration; revision history and restore controls; basic comment list, create, resolve and reopen controls; document status selector.
+- Remaining: verify save/restore races, add focused editor and API tests, test against a live PostgreSQL database, improve local-draft recovery and unsaved-navigation warnings, and add contextual text anchors for comments.
 
 ### M4.1 — Review and history
 - Display comments beside the document and support anchored selections.
