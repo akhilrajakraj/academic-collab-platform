@@ -333,7 +333,7 @@ export default function DocumentEditorPage() {
   return (
     <main className="document-editor-page">
       <header className="editor-topbar">
-        <button className="editor-back" onClick={() => router.push('/')} aria-label="Back to workspace">← <span>Workspace</span></button>
+        <button className="editor-back" onClick={() => router.push('/documents')} aria-label="Back to documents">← <span>Documents</span></button>
         <div className="editor-breadcrumb"><span>{document?.project.name || 'Project'}</span><b>/</b><strong>{title || 'Untitled document'}</strong></div>
         <div className={'save-indicator save-' + saveState}><span />{saveLabel}</div>
         <button className="secondary-button editor-top-action" onClick={() => void loadDocument()} disabled={saving}>Reload</button>
