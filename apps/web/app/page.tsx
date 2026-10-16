@@ -8,6 +8,9 @@ type DocumentItem = { id: string; projectId: string; title: string; project: str
 type ApiActivity = { id: string; message: string; createdAt: string; actor?: { displayName: string } | null };
 type AuthResponse = { accessToken: string; user: { displayName: string; email: string } };
 type ActivityItem = { initials: string; color: string; title: string; action: string; target: string; time: string };
+type ApiMember = { id: string; role: 'OWNER' | 'EDITOR' | 'REVIEWER' | 'VIEWER'; joinedAt: string; user: { id: string; email: string; displayName: string; avatarUrl?: string | null } };
+type ApiInvitation = { id: string; email: string; role: 'EDITOR' | 'REVIEWER' | 'VIEWER'; status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED'; expiresAt: string; isExpired: boolean };
+type InvitationCreated = ApiInvitation & { acceptanceToken: string };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
 
@@ -65,6 +68,15 @@ export default function HomePage() {
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
   const [notice, setNotice] = useState('');
+  const [members, setMembers] = useState<ApiMember[]>([]);
+  const [invitations, setInvitations] = useState<ApiInvitation[]>([]);
+  const [canManageTeam, setCanManageTeam] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'EDITOR' | 'REVIEWER' | 'VIEWER'>('EDITOR');
+  const [teamBusy, setTeamBusy] = useState(false);
+  const [teamError, setTeamError] = useState('');
+  const [createdInviteToken, setCreatedInviteToken] = useState('');
+  const [acceptToken, setAcceptToken] = useState('');
 
   useEffect(() => {
     setToken(sessionStorage.getItem('academic-collab-access-token'));
@@ -114,6 +126,23 @@ export default function HomePage() {
         nextProjects = [starter];
       }
       setProjects(nextProjects);
+
+      if (nextProjects[0]) {
+        const projectId = nextProjects[0].id;
+        const [membersResponse, invitationsResponse] = await Promise.all([
+          apiFetch(`${API_BASE}/projects/${projectId}/members`, { cache: 'no-store' }),
+          apiFetch(`${API_BASE}/projects/${projectId}/invitations`, { cache: 'no-store' }),
+        ]);
+        if (membersResponse.ok) setMembers(await membersResponse.json());
+        else setMembers([]);
+        setCanManageTeam(invitationsResponse.ok);
+        if (invitationsResponse.ok) setInvitations(await invitationsResponse.json());
+        else setInvitations([]);
+      } else {
+        setMembers([]);
+        setInvitations([]);
+        setCanManageTeam(false);
+      }
 
       const documentGroups = await Promise.all(nextProjects.map(async (project) => {
         const response = await apiFetch(`${API_BASE}/projects/${project.id}/documents`, { cache: 'no-store' });
@@ -187,6 +216,113 @@ export default function HomePage() {
       setNotice(error instanceof Error ? error.message : 'Document could not be saved.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function createInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const project = projects[0];
+    if (!project || !inviteEmail.trim() || teamBusy) return;
+    setTeamBusy(true);
+    setTeamError('');
+    setCreatedInviteToken('');
+    try {
+      const response = await apiFetch(`${API_BASE}/projects/${project.id}/invitations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+      });
+      const result = await response.json().catch(() => ({})) as InvitationCreated & { message?: string | string[] };
+      if (!response.ok || !result.acceptanceToken) {
+        throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Invitation could not be created.');
+      }
+      setCreatedInviteToken(result.acceptanceToken);
+      setInviteEmail('');
+      setNotice(`Invitation created for ${result.email}. Share the token with that person securely.`);
+      await loadWorkspace();
+    } catch (error) {
+      setTeamError(error instanceof Error ? error.message : 'Invitation could not be created.');
+    } finally {
+      setTeamBusy(false);
+    }
+  }
+
+  async function acceptInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!acceptToken.trim() || teamBusy) return;
+    setTeamBusy(true);
+    setTeamError('');
+    try {
+      const response = await apiFetch(`${API_BASE}/invitations/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: acceptToken.trim() }),
+      });
+      const result = await response.json().catch(() => ({})) as { message?: string | string[] };
+      if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Invitation could not be accepted.');
+      setAcceptToken('');
+      setNotice('Invitation accepted. The shared project is now available in your workspace.');
+      await loadWorkspace();
+    } catch (error) {
+      setTeamError(error instanceof Error ? error.message : 'Invitation could not be accepted.');
+    } finally {
+      setTeamBusy(false);
+    }
+  }
+
+  async function changeMemberRole(member: ApiMember, role: 'EDITOR' | 'REVIEWER' | 'VIEWER') {
+    const project = projects[0];
+    if (!project || teamBusy) return;
+    setTeamBusy(true);
+    setTeamError('');
+    try {
+      const response = await apiFetch(`${API_BASE}/projects/${project.id}/members/${member.id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const result = await response.json().catch(() => ({})) as { message?: string | string[] };
+      if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Role could not be updated.');
+      await loadWorkspace();
+    } catch (error) {
+      setTeamError(error instanceof Error ? error.message : 'Role could not be updated.');
+    } finally {
+      setTeamBusy(false);
+    }
+  }
+
+  async function removeMember(member: ApiMember) {
+    const project = projects[0];
+    if (!project || teamBusy || member.role === 'OWNER') return;
+    if (!window.confirm(`Remove ${member.user.displayName} from this project?`)) return;
+    setTeamBusy(true);
+    setTeamError('');
+    try {
+      const response = await apiFetch(`${API_BASE}/projects/${project.id}/members/${member.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({})) as { message?: string | string[] };
+      if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Member could not be removed.');
+      await loadWorkspace();
+    } catch (error) {
+      setTeamError(error instanceof Error ? error.message : 'Member could not be removed.');
+    } finally {
+      setTeamBusy(false);
+    }
+  }
+
+  async function revokeInvitation(invitation: ApiInvitation) {
+    const project = projects[0];
+    if (!project || teamBusy || invitation.status !== 'PENDING') return;
+    setTeamBusy(true);
+    setTeamError('');
+    try {
+      const response = await apiFetch(`${API_BASE}/projects/${project.id}/invitations/${invitation.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({})) as { message?: string | string[] };
+      if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Invitation could not be revoked.');
+      await loadWorkspace();
+    } catch (error) {
+      setTeamError(error instanceof Error ? error.message : 'Invitation could not be revoked.');
+    } finally {
+      setTeamBusy(false);
     }
   }
 
@@ -290,6 +426,36 @@ export default function HomePage() {
             <article className="stat-card"><div className="stat-top"><span>Total documents</span><span className="stat-icon blue-icon">▤</span></div><div className="stat-value">{totalDocuments}</div><div className="stat-foot">Across all your projects</div></article>
             <article className="stat-card"><div className="stat-top"><span>Awaiting review</span><span className="stat-icon amber-icon">◷</span></div><div className="stat-value">{awaitingReview}</div><div className="stat-foot">Documents in review</div></article>
             <article className="stat-card"><div className="stat-top"><span>Memberships</span><span className="stat-icon green-icon">♧</span></div><div className="stat-value">{collaboratorCount}</div><div className="stat-foot">Project memberships</div></article>
+          </section>
+          <section className="team-panel" id="shared" aria-labelledby="team-title">
+            <div className="section-heading"><div><h2 id="team-title">Project team</h2><p>Manage access for {projects[0]?.name || 'your project'}.</p></div><span className="team-count">{members.length} member{members.length === 1 ? '' : 's'}</span></div>
+            {teamError && <div className="api-banner" role="alert">{teamError}<button onClick={() => setTeamError('')}>Dismiss</button></div>}
+            <div className="team-layout">
+              <div className="team-members">
+                {members.map((member) => <div className="team-member" key={member.id}>
+                  <span className="member-avatar">{member.user.displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>
+                  <span className="member-details"><strong>{member.user.displayName}</strong><small>{member.user.email}</small></span>
+                  {member.role === 'OWNER' ? <span className="role-pill">Owner</span> : canManageTeam ? <select aria-label={`Role for ${member.user.displayName}`} value={member.role} disabled={teamBusy} onChange={(event) => void changeMemberRole(member, event.target.value as 'EDITOR' | 'REVIEWER' | 'VIEWER')}><option value="EDITOR">Editor</option><option value="REVIEWER">Reviewer</option><option value="VIEWER">Viewer</option></select> : <span className="role-pill">{member.role.toLowerCase()}</span>}
+                  {canManageTeam && member.role !== 'OWNER' && <button className="text-danger" disabled={teamBusy} onClick={() => void removeMember(member)}>Remove</button>}
+                </div>)}
+                {!members.length && <div className="empty-state"><strong>No team members yet</strong><p>Create a project or refresh to load its members.</p></div>}
+              </div>
+              {canManageTeam ? <div className="invite-column">
+                <h3>Invite a collaborator</h3>
+                <p>Invitations expire after seven days. The token is shown only once because the server stores only its hash.</p>
+                <form className="invite-form" onSubmit={(event) => void createInvitation(event)}>
+                  <label htmlFor="invite-email">Email address</label><input id="invite-email" type="email" required maxLength={254} value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="collaborator@example.com" />
+                  <label htmlFor="invite-role">Project role</label><select id="invite-role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as 'EDITOR' | 'REVIEWER' | 'VIEWER')}><option value="EDITOR">Editor — can edit documents</option><option value="REVIEWER">Reviewer — review and comment</option><option value="VIEWER">Viewer — read-only access</option></select>
+                  <button className="primary-button" type="submit" disabled={teamBusy || !inviteEmail.trim()}>{teamBusy ? 'Working…' : 'Create invitation'} <span>→</span></button>
+                </form>
+                {createdInviteToken && <div className="invite-token" role="status"><strong>Share this invitation token securely</strong><code>{createdInviteToken}</code><button className="secondary-button" type="button" onClick={() => { void navigator.clipboard?.writeText(createdInviteToken); setNotice('Invitation token copied if clipboard access is available.'); }}>Copy token</button><small>Ask the invitee to sign in with the invited email, paste the token below, and accept.</small></div>}
+                <form className="accept-invite-form" onSubmit={(event) => void acceptInvitation(event)}>
+                  <label htmlFor="accept-token">Have an invitation token?</label><input id="accept-token" value={acceptToken} onChange={(event) => setAcceptToken(event.target.value)} minLength={32} maxLength={128} placeholder="Paste invitation token" required />
+                  <button className="secondary-button" type="submit" disabled={teamBusy || acceptToken.trim().length < 32}>Accept invitation</button>
+                </form>
+                <div className="invitation-list"><h3>Invitations</h3>{invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><span><strong>{invitation.email}</strong><small>{invitation.role} · {invitation.isExpired ? 'Expired' : invitation.status.toLowerCase()}</small></span>{invitation.status === 'PENDING' && !invitation.isExpired && <button className="text-danger" disabled={teamBusy} onClick={() => void revokeInvitation(invitation)}>Revoke</button>}</div>)}{!invitations.length && <p className="muted-copy">No invitations yet.</p>}</div>
+              </div> : <div className="invite-column"><h3>Join your team</h3><p>If a project owner shared an invitation token with you, paste it here to join the project.</p><form className="accept-invite-form" onSubmit={(event) => void acceptInvitation(event)}><label htmlFor="accept-token-member">Invitation token</label><input id="accept-token-member" value={acceptToken} onChange={(event) => setAcceptToken(event.target.value)} minLength={32} maxLength={128} placeholder="Paste invitation token" required /><button className="secondary-button" type="submit" disabled={teamBusy || acceptToken.trim().length < 32}>Accept invitation</button></form></div>}
+            </div>
           </section>
           <section className="content-grid">
             <div className="documents-section" id="documents">
