@@ -8,9 +8,15 @@ type ApiDocument = { id: string; projectId: string; title: string; status: 'DRAF
 type DocumentRow = { id: string; projectId: string; project: string; title: string; status: 'Draft' | 'In review' | 'Approved' | 'Archived'; updatedAt: string };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
-const statusLabel = (status: ApiDocument['status']): DocumentRow['status'] => ({
-  DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived',
-})[status];
+const statusLabel = (status: ApiDocument['status']): DocumentRow['status'] => {
+  const labels: Record<ApiDocument['status'], DocumentRow['status']> = {
+    DRAFT: 'Draft',
+    IN_REVIEW: 'In review',
+    APPROVED: 'Approved',
+    ARCHIVED: 'Archived',
+  };
+  return labels[status];
+};
 
 function formatUpdated(value: string) {
   const date = new Date(value);
