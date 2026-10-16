@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
-import { ProjectInvitationStatus, ProjectRole, Prisma } from '@prisma/client';
+import { ProjectInvitationStatus, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -23,7 +23,11 @@ export class InvitationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listMembers(projectId: string, userId: string) {
-    await this.requireOwner(projectId, userId);
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId } },
+      select: { id: true },
+    });
+    if (!membership) throw new NotFoundException('Project not found.');
     return this.prisma.projectMember.findMany({
       where: { projectId },
       orderBy: { joinedAt: 'asc' },
