@@ -225,6 +225,41 @@ export default function DocumentEditorPage() {
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
+  function downloadWordDocument() {
+    if (!editor || !document) return;
+    const safeTitle = (title.trim() || 'Academic-Collab-Document').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').slice(0, 120);
+    const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
+      safeTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+      '</title><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.5;color:#222;margin:2.5cm}h1{font-size:22pt}h2{font-size:16pt}h3{font-size:13pt}blockquote{border-left:3px solid #888;padding-left:12px;color:#555}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px}ul,ol{padding-left:24px}pre{white-space:pre-wrap}</style></head><body>' +
+      editor.getHTML() + '</body></html>';
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = window.document.createElement('a');
+    anchor.href = url;
+    anchor.download = safeTitle + '.doc';
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setNotice('Word-compatible document downloaded. You can open the .doc file in Microsoft Word.');
+  }
+
+  function downloadPdf() {
+    if (!editor || !document) return;
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+    if (!printWindow) {
+      setError('Your browser blocked the PDF print window. Allow pop-ups for this site and try again.');
+      return;
+    }
+    const safeTitle = (title.trim() || 'Academic Collab document').replace(/[<>]/g, '');
+    printWindow.document.open();
+    printWindow.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
+      safeTitle + '</title><style>@page{size:A4;margin:20mm}body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.65;color:#202820}h1{font-size:24pt}h2{font-size:18pt}h3{font-size:14pt}blockquote{border-left:3px solid #8ca477;padding-left:12px;color:#536052}pre{white-space:pre-wrap}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{border:1px solid #b8c0b4;padding:6px}a{color:inherit;text-decoration:underline}</style></head><body>' +
+      editor.getHTML() + '<script>window.onload=function(){window.focus();window.print();};<\/script></body></html>');
+    printWindow.document.close();
+    setNotice('Print dialog opened. Choose “Save as PDF” as the destination.');
+  }
+
   async function updateStatus(nextStatus: ApiDocument['status']) {
     if (!document || !canEdit) return;
     if (saveState !== 'saved') {
@@ -359,9 +394,14 @@ export default function DocumentEditorPage() {
               <button title="Bullet list" aria-label="Bullet list" disabled={!canEdit || !editor} className={editor?.isActive('bulletList') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleBulletList().run()}>☷</button>
               <button title="Numbered list" aria-label="Numbered list" disabled={!canEdit || !editor} className={editor?.isActive('orderedList') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1.</button>
               <button title="Quote" aria-label="Blockquote" disabled={!canEdit || !editor} className={editor?.isActive('blockquote') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>❞</button>
+              <button title="Code block" aria-label="Code block" disabled={!canEdit || !editor} className={editor?.isActive('codeBlock') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>{'{}'}</button>
+              <button title="Horizontal divider" aria-label="Horizontal divider" disabled={!canEdit || !editor} onClick={() => editor?.chain().focus().setHorizontalRule().run()}>―</button>
+              <button title="Clear formatting" aria-label="Clear formatting" disabled={!canEdit || !editor} onClick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}>Tx</button>
               <button title="Undo" aria-label="Undo" disabled={!canEdit || !editor || !editor.can().undo()} onClick={() => editor?.chain().focus().undo().run()}>↶</button>
               <button title="Redo" aria-label="Redo" disabled={!canEdit || !editor || !editor.can().redo()} onClick={() => editor?.chain().focus().redo().run()}>↷</button>
               <span className="toolbar-spacer" />
+              <button className="toolbar-side-action" onClick={downloadWordDocument} disabled={!editor} title="Download a Word-compatible .doc file">↓ Word</button>
+              <button className="toolbar-side-action" onClick={downloadPdf} disabled={!editor} title="Print or save this document as PDF">↓ PDF</button>
               <button className="toolbar-side-action" onClick={() => setShowHistory((value) => !value)} aria-expanded={showHistory}>◷ History</button>
               <button className="toolbar-side-action" onClick={() => setShowComments((value) => !value)} aria-expanded={showComments}>▤ Comments</button>
             </div>
