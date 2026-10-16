@@ -387,9 +387,12 @@ export default function DocumentEditorPage() {
               <button title="Bold" aria-label="Bold" disabled={!canEdit || !editor} className={editor?.isActive('bold') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button>
               <button title="Italic" aria-label="Italic" disabled={!canEdit || !editor} className={editor?.isActive('italic') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button>
               <button title="Strike" aria-label="Strikethrough" disabled={!canEdit || !editor} className={editor?.isActive('strike') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></button>
+              <button title="Inline code" aria-label="Inline code" disabled={!canEdit || !editor} className={editor?.isActive('code') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleCode().run()}>{'{}'}</button>
               <span className="toolbar-divider" />
               <button title="Heading 1" aria-label="Heading 1" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 1 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
               <button title="Heading 2" aria-label="Heading 2" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 2 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
+              <button title="Heading 3" aria-label="Heading 3" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 3 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
+              <button title="Paragraph" aria-label="Normal paragraph" disabled={!canEdit || !editor} className={editor?.isActive('paragraph') ? 'is-active' : ''} onClick={() => editor?.chain().focus().setParagraph().run()}>¶</button>
               <span className="toolbar-divider" />
               <button title="Bullet list" aria-label="Bullet list" disabled={!canEdit || !editor} className={editor?.isActive('bulletList') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleBulletList().run()}>☷</button>
               <button title="Numbered list" aria-label="Numbered list" disabled={!canEdit || !editor} className={editor?.isActive('orderedList') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1.</button>
