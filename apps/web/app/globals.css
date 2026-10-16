@@ -482,3 +482,46 @@ body { font-size: 14px; line-height: 1.5; }
   .documents-page-panel > .documents-panel-heading h2 { font-size: 20px; }
   .documents-refresh-button { flex-basis: 36px; width: 36px; height: 36px; }
 }
+
+
+/* Page-like writing surface and expanded document editor tools. */
+.editor-canvas {
+  padding: 28px;
+  background: #f5f6f0;
+}
+.editor-canvas .tiptap-content {
+  min-height: 780px;
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 68px clamp(28px, 7vw, 84px);
+  border: 1px solid #dfe5da;
+  border-radius: 2px;
+  background: #fffefa;
+  box-shadow: 0 3px 14px rgba(31,48,43,.045);
+  color: #26352b;
+  font-size: 15px;
+  line-height: 1.8;
+  outline: none;
+}
+.editor-canvas .tiptap-content:focus { border-color: #c9d8bd; box-shadow: 0 0 0 2px rgba(129,153,109,.10), 0 3px 14px rgba(31,48,43,.045); }
+.editor-canvas .tiptap-content h1 { font-size: 30px; line-height: 1.25; letter-spacing: -.8px; margin: 1.2em 0 .55em; }
+.editor-canvas .tiptap-content h2 { font-size: 23px; line-height: 1.35; letter-spacing: -.45px; margin: 1.15em 0 .5em; }
+.editor-canvas .tiptap-content h3 { font-size: 18px; line-height: 1.4; margin: 1em 0 .5em; }
+.editor-canvas .tiptap-content p { margin: .65em 0; }
+.editor-canvas .tiptap-content blockquote { margin: 1em 0; padding: 5px 0 5px 18px; border-left: 3px solid #8ca477; color: #647264; }
+.editor-canvas .tiptap-content pre { padding: 14px; border: 1px solid #e1e7da; border-radius: 8px; background: #f5f6f0; overflow-x: auto; }
+.editor-canvas .tiptap-content code { border-radius: 4px; background: #f0f2eb; padding: 2px 4px; }
+.editor-canvas .tiptap-content hr { margin: 1.5em 0; border: 0; border-top: 1px solid #cbd5c5; }
+.editor-toolbar { flex-wrap: wrap; align-items: center; gap: 5px; }
+.editor-toolbar button { min-width: 32px; }
+.editor-toolbar .toolbar-side-action { padding: 7px 9px; white-space: nowrap; }
+@media (max-width: 760px) {
+  .editor-canvas { padding: 12px; }
+  .editor-canvas .tiptap-content { min-height: 620px; padding: 30px 22px; font-size: 14px; }
+}
+@media print {
+  .editor-topbar, .editor-toolbar, .editor-side-column, .editor-footer { display: none !important; }
+  .editor-workspace, .editor-main-column, .editor-canvas { display: block !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; background: white !important; }
+  .editor-canvas .tiptap-content { border: 0 !important; box-shadow: none !important; max-width: none; min-height: 0; padding: 0 !important; }
+}
