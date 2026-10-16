@@ -94,7 +94,7 @@ export default function HomePage() {
       <section className="features-section section-space" id="features">
         <div className="landing-container">
           <div className="section-heading"><div><span className="section-kicker">A BETTER WAY TO COLLABORATE</span><h2>Everything in its place.<br /><span className="serif-accent">Everyone in the loop.</span></h2></div><p>From the first brainstorm to the final draft, give your team a shared place to think, create, and make progress.</p></div>
-          <div className="feature-grid">{features.map((feature) => <article className="feature-card" key={feature.number}><div className="feature-card-top"><span className="feature-number">{feature.number} / 03</span><span className="feature-icon" aria-hidden="true">{feature.icon}</span></div><h3>{feature.title}</h3><p>{feature.description}</p><a href="#how-it-works" aria-label={\`Learn how to use: \${feature.title}\`}>Explore the workflow <span aria-hidden="true">↗</span></a></article>)}</div>
+          <div className="feature-grid">{features.map((feature) => <article className="feature-card" key={feature.number}><div className="feature-card-top"><span className="feature-number">{feature.number} / 03</span><span className="feature-icon" aria-hidden="true">{feature.icon}</span></div><h3>{feature.title}</h3><p>{feature.description}</p><a href="#how-it-works" aria-label={feature.title}>Explore the workflow <span aria-hidden="true">↗</span></a></article>)}</div>
         </div>
       </section>
 
