@@ -73,6 +73,48 @@ const TextStyleAttributes = Extension.create({
   },
 });
 
+
+const ParagraphLayoutAttributes = Extension.create({
+  name: 'paragraphLayoutAttributes',
+  addGlobalAttributes() {
+    return [{
+      types: ['paragraph', 'heading'],
+      attributes: {
+        textAlign: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.textAlign || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.textAlign ? { style: `text-align: ${attributes.textAlign}` } : {},
+        },
+        textIndent: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.textIndent || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.textIndent ? { style: `text-indent: ${attributes.textIndent}` } : {},
+        },
+        lineHeight: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.lineHeight || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.lineHeight ? { style: `line-height: ${attributes.lineHeight}` } : {},
+        },
+        paragraphSpacing: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.getAttribute('data-paragraph-spacing') || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.paragraphSpacing ? { 'data-paragraph-spacing': attributes.paragraphSpacing, style: `margin-bottom: ${attributes.paragraphSpacing}` } : {},
+        },
+        paragraphShading: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.backgroundColor || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.paragraphShading ? { style: `background-color: ${attributes.paragraphShading}` } : {},
+        },
+        paragraphBorder: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.getAttribute('data-paragraph-border') || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.paragraphBorder ? { 'data-paragraph-border': attributes.paragraphBorder, style: `border-bottom: 1px solid ${attributes.paragraphBorder}; padding-bottom: .25em` } : {},
+        },
+      },
+    }];
+  },
+});
+
 function messageOf(error: ApiError | null, fallback: string) {
   return Array.isArray(error?.message) ? error.message.join(' ') : error?.message || fallback;
 }
@@ -133,6 +175,7 @@ export default function DocumentEditorPage() {
       StarterKit,
       TextStyle,
       TextStyleAttributes,
+      ParagraphLayoutAttributes,
       UnderlineMark,
       SubscriptMark,
       SuperscriptMark,
@@ -280,6 +323,27 @@ export default function DocumentEditorPage() {
   }, [canEdit, document, editor, saveDocument, status, title]);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  function updateParagraphLayout(attributes: Record<string, unknown>) {
+    if (!editor || !canEdit) return;
+    const chain = editor.chain().focus();
+    if (editor.isActive('heading')) chain.updateAttributes('heading', attributes).run();
+    else chain.updateAttributes('paragraph', attributes).run();
+  }
+
+  function changeIndent(direction: -1 | 1) {
+    if (!editor || !canEdit) return;
+    const node = editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph');
+    const current = Number.parseFloat(String(node.textIndent || '0')) || 0;
+    const next = Math.max(0, Math.min(8, current + direction * 1.5));
+    updateParagraphLayout({ textIndent: next ? `${next}em` : null });
+  }
+
+  function toggleParagraphBorder() {
+    if (!editor || !canEdit) return;
+    const node = editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph');
+    updateParagraphLayout({ paragraphBorder: node.paragraphBorder ? null : '#b9c5b3' });
+  }
 
   function downloadWordDocument() {
     if (!editor || !document) return;
@@ -467,6 +531,33 @@ export default function DocumentEditorPage() {
               </label>
               <button title="Clear text styling" aria-label="Clear text styling" disabled={!canEdit || !editor} onClick={() => editor?.chain().focus().unsetMark('textStyle').unsetMark('underline').unsetMark('subscript').unsetMark('superscript').run()}>A×</button>
               <span className="toolbar-divider" />
+              <span className="toolbar-divider" />
+              <button title="Align left" aria-label="Align left" disabled={!canEdit || !editor} className={editor?.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph').textAlign === 'left' || !editor?.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph').textAlign ? 'is-active' : ''} onClick={() => updateParagraphLayout({ textAlign: 'left' })}>≡</button>
+              <button title="Center align" aria-label="Center align" disabled={!canEdit || !editor} className={editor?.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph').textAlign === 'center' ? 'is-active' : ''} onClick={() => updateParagraphLayout({ textAlign: 'center' })}>≡</button>
+              <button title="Align right" aria-label="Align right" disabled={!canEdit || !editor} className={editor?.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph').textAlign === 'right' ? 'is-active' : ''} onClick={() => updateParagraphLayout({ textAlign: 'right' })}>≡</button>
+              <button title="Justify" aria-label="Justify text" disabled={!canEdit || !editor} className={editor?.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph').textAlign === 'justify' ? 'is-active' : ''} onClick={() => updateParagraphLayout({ textAlign: 'justify' })}>☰</button>
+              <button title="Decrease indent" aria-label="Decrease indent" disabled={!canEdit || !editor} onClick={() => changeIndent(-1)}>⇤</button>
+              <button title="Increase indent" aria-label="Increase indent" disabled={!canEdit || !editor} onClick={() => changeIndent(1)}>⇥</button>
+              <label className="toolbar-select-control" title="Line spacing">
+                <span className="sr-only">Line spacing</span>
+                <select aria-label="Line spacing" disabled={!canEdit || !editor} defaultValue="" onChange={(event) => { const value = event.target.value; if (value) updateParagraphLayout({ lineHeight: value }); event.target.value = ''; }}>
+                  <option value="" disabled>Line</option><option value="1">1.0</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2.0</option>
+                </select>
+              </label>
+              <label className="toolbar-select-control" title="Paragraph spacing">
+                <span className="sr-only">Paragraph spacing</span>
+                <select aria-label="Paragraph spacing" disabled={!canEdit || !editor} defaultValue="" onChange={(event) => { const value = event.target.value; if (value) updateParagraphLayout({ paragraphSpacing: value }); event.target.value = ''; }}>
+                  <option value="" disabled>After</option><option value="0">0</option><option value="0.5em">Small</option><option value="1em">Normal</option><option value="1.5em">Large</option>
+                </select>
+              </label>
+              <label className="toolbar-color-control" title="Paragraph shading">
+                <span aria-hidden="true">▧</span><input aria-label="Paragraph shading color" type="color" disabled={!canEdit || !editor} defaultValue="#edf3e4" onChange={(event) => updateParagraphLayout({ paragraphShading: event.target.value })} />
+              </label>
+              <button title="Toggle paragraph bottom border" aria-label="Toggle paragraph bottom border" disabled={!canEdit || !editor} onClick={toggleParagraphBorder}>▱</button>
+              <span className="toolbar-divider" />
+              <button title="Promote list item" aria-label="Promote list item" disabled={!canEdit || !editor || !editor.isActive('listItem')} onClick={() => editor?.chain().focus().liftListItem('listItem').run()}>⇤•</button>
+              <button title="Nest list item" aria-label="Nest list item" disabled={!canEdit || !editor || !editor.isActive('listItem')} onClick={() => editor?.chain().focus().sinkListItem('listItem').run()}>⇥•</button>
+              <button title="Restart numbered list at 1" aria-label="Restart numbered list at 1" disabled={!canEdit || !editor || !editor.isActive('orderedList')} onClick={() => editor?.chain().focus().updateAttributes('orderedList', { start: 1 }).run()}>1↻</button>
               <button title="Heading 1" aria-label="Heading 1" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 1 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
               <button title="Heading 2" aria-label="Heading 2" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 2 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
               <button title="Heading 3" aria-label="Heading 3" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 3 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
