@@ -63,3 +63,7 @@ docs/                     Product and architecture documentation
 ## Development roadmap
 
 The implementation is divided into independently reviewable modules covering platform foundation, identity and access control, project membership, document editing, review and revisions, real-time collaboration, export, academic assistance, and release readiness. See [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md) for current status, delivery order, verification criteria, and end-to-end acceptance scenario.
+
+### Project collaboration API
+
+The project invitation and membership endpoints, role rules, token lifecycle, and known limitations are documented in [docs/PROJECT_COLLABORATION_API.md](docs/PROJECT_COLLABORATION_API.md). Invitation email delivery is not yet implemented; development invitations return a one-time token for secure out-of-band sharing.
