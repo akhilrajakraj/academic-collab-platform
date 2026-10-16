@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import CollaborationPresence from '../../components/collaboration-presence';
+import CollaborationPresence from '../../../components/collaboration-presence';
 
 type Role = 'OWNER' | 'EDITOR' | 'REVIEWER' | 'VIEWER';
 type ApiUser = { id: string; displayName: string; email: string };
