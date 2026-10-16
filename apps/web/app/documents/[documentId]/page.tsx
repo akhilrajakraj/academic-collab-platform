@@ -297,7 +297,7 @@ export default function DocumentEditorPage() {
       return;
     }
     if (!window.confirm(`Restore “${revision.title}”? The current content will be preserved as a revision.`)) return;
-    const response = await apiFetch(`${API_BASE}/documents/${document.id}/revisions/${revision.id}/restore`, { method: 'POST' });
+    const response = await apiFetch(`${API_BASE}/documents/${document.id}/revisions/${revision.id}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedUpdatedAt: updatedAtRef.current }) });
     const result = await response.json().catch(() => ({})) as ApiDocument & ApiError;
     if (!response.ok) {
       setError(messageOf(result, 'Revision could not be restored.'));
