@@ -184,7 +184,12 @@ export class DocumentsService {
   }
 
 
-  async restoreRevision(documentId: string, revisionId: string, userId: string) {
+  async restoreRevision(
+    documentId: string,
+    revisionId: string,
+    userId: string,
+    expectedUpdatedAt?: string,
+  ) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, project: { members: { some: { userId: userId } } } },
     });
@@ -195,6 +200,15 @@ export class DocumentsService {
     });
     if (!revision) throw new NotFoundException('Revision not found for this document.');
 
+    const expected = expectedUpdatedAt ? new Date(expectedUpdatedAt) : document.updatedAt;
+    if (expected.getTime() !== document.updatedAt.getTime()) {
+      throw new ConflictException({
+        code: 'DOCUMENT_VERSION_CONFLICT',
+        message: 'This document changed after you opened it. Reload the latest version before restoring a revision.',
+        currentUpdatedAt: document.updatedAt.toISOString(),
+      });
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await tx.documentRevision.create({
         data: {
@@ -204,10 +218,17 @@ export class DocumentsService {
           content: document.content as Prisma.InputJsonValue,
         },
       });
-      const restored = await tx.document.update({
-        where: { id: documentId },
+      const write = await tx.document.updateMany({
+        where: { id: documentId, updatedAt: expected },
         data: { title: revision.title, content: revision.content as Prisma.InputJsonValue },
       });
+      if (write.count !== 1) {
+        throw new ConflictException({
+          code: 'DOCUMENT_VERSION_CONFLICT',
+          message: 'This document changed while the revision was being restored. Reload the latest version and try again.',
+        });
+      }
+      const restored = await tx.document.findUniqueOrThrow({ where: { id: documentId } });
       await tx.activity.create({
         data: {
           projectId: document.projectId,
