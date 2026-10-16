@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentStatus, Prisma, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -73,6 +73,27 @@ export class DocumentsService {
     });
     if (!existing) throw new NotFoundException('Document not found.');
     await this.requireEditor(existing.projectId, userId);
+
+    if (dto.status !== undefined && dto.status !== existing.status) {
+      const role = await this.requireMembership(existing.projectId, userId);
+      const ownerOnlyTransition = dto.status === DocumentStatus.ARCHIVED
+        || existing.status === DocumentStatus.ARCHIVED;
+      if (ownerOnlyTransition && role !== ProjectRole.OWNER) {
+        throw new ForbiddenException('Only the project owner can archive or reopen a document.');
+      }
+
+      const allowedTransitions: Record<DocumentStatus, DocumentStatus[]> = {
+        [DocumentStatus.DRAFT]: [DocumentStatus.IN_REVIEW, DocumentStatus.ARCHIVED],
+        [DocumentStatus.IN_REVIEW]: [DocumentStatus.DRAFT, DocumentStatus.APPROVED, DocumentStatus.ARCHIVED],
+        [DocumentStatus.APPROVED]: [DocumentStatus.DRAFT, DocumentStatus.ARCHIVED],
+        [DocumentStatus.ARCHIVED]: [DocumentStatus.DRAFT],
+      };
+      if (!allowedTransitions[existing.status].includes(dto.status)) {
+        throw new BadRequestException(
+          `Document status cannot move from ${existing.status} to ${dto.status}.`,
+        );
+      }
+    }
 
     const expectedUpdatedAt = dto.expectedUpdatedAt
       ? new Date(dto.expectedUpdatedAt)
