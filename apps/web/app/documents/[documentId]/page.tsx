@@ -246,7 +246,7 @@ export default function DocumentEditorPage() {
 
   function downloadPdf() {
     if (!editor || !document) return;
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+    const printWindow = window.open('', '_blank');
     if (!printWindow) {
       setError('Your browser blocked the PDF print window. Allow pop-ups for this site and try again.');
       return;
