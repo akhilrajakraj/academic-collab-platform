@@ -39,6 +39,7 @@ This roadmap decomposes the Microsoft Word feature inventory into independently 
 ## Current status
 
 - M01: In progress. Existing controls cover bold, italic, strike, headings 1–3, normal paragraph, inline code, lists, blockquote, code block, horizontal rule, clear formatting, undo/redo, autosave and role-based editability. The first incremental delivery added Heading 3, Normal paragraph and Inline code controls. Additional work is still needed for keyboard/accessibility review and automated coverage.
+- M02: Initial controls implemented for underline, text color, text highlight, font family, font size, subscript, superscript and clearing inline text styles. Requires typecheck/build and round-trip verification before being considered complete.
 - M04: Partial visual foundation only. A visible border exists around the editor surface; configurable document page borders and print pagination are not implemented.
 - M10: Partial. General document comments and resolve/reopen exist; text-range anchoring and threaded replies are not complete.
 - M12: Partial. Authenticated presence exists; concurrent text synchronization and durable Yjs persistence are not complete.
