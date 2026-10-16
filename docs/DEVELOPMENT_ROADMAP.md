@@ -24,6 +24,8 @@ A student can create a project, invite collaborators, co-author a structured doc
 
 ### Delivered on this development branch
 
+- M1 input validation now rejects whitespace-only display names, project names, document titles and comment bodies.
+- Document status updates now follow an explicit transition matrix. Only the project owner can archive or reopen archived documents; invalid transitions return HTTP 400.
 - Added optional `expectedUpdatedAt` to the document update DTO. Clients can send the ISO-8601 `updatedAt` value returned by the document API.
 - Document updates compare the supplied version against the loaded record and use a conditional database write. If the document changes before the write, the API responds with HTTP 409 and a stable `DOCUMENT_VERSION_CONFLICT` code instead of silently overwriting newer content.
 - The update and revision creation happen in a transaction, so a failed conditional write rolls back the attempted revision as well.
@@ -31,7 +33,9 @@ A student can create a project, invite collaborators, co-author a structured doc
 
 ### Required verification before merging
 
-1. Install from the committed lockfile and generate the Prisma client.
+1. Confirm whitespace-only display names, project names, document titles and comment bodies return HTTP 400.
+2. Confirm editors cannot archive or reopen documents and invalid status transitions return HTTP 400.
+3. Install from the committed lockfile and generate the Prisma client.
 2. Run API typecheck, lint, and build.
 3. Exercise a normal document update and confirm the response includes the latest `updatedAt`.
 4. Submit an update with a stale `expectedUpdatedAt`; confirm HTTP 409 and verify that neither document content nor revision history was changed by the failed transaction.
