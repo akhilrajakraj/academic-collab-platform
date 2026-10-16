@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 type ApiProject = { id: string; name: string; description?: string | null; _count?: { documents: number; members: number } };
@@ -417,10 +418,10 @@ export default function HomePage() {
         <div className="workspace-switch"><span className="workspace-avatar">AC</span><span className="workspace-copy"><strong>Student workspace</strong><small>Local demo</small></span><span className="chevron">⌄</span></div>
         <p className="nav-label">WORKSPACE</p>
         <nav className="navigation" aria-label="Main navigation">
-          <a className="nav-item active" href="/workspace"><span className="nav-icon" data-tooltip="Workspace overview" aria-hidden="true">▦</span> Overview</a>
-          <a className="nav-item" href="/projects"><span className="nav-icon" data-tooltip="Your projects" aria-hidden="true">◫</span> My projects <span className="nav-count">{projects.length}</span></a>
-          <a className="nav-item" href="/documents"><span className="nav-icon" data-tooltip="Project documents" aria-hidden="true">▤</span> Documents</a>
-          <a className="nav-item" href="/shared"><span className="nav-icon" data-tooltip="Documents and projects shared with you" aria-hidden="true">♧</span> Shared with me</a>
+          <Link className="nav-item active" href="/workspace"><span className="nav-icon" data-tooltip="Workspace overview" aria-hidden="true">▦</span> Overview</Link>
+          <Link className="nav-item" href="/projects"><span className="nav-icon" data-tooltip="Your projects" aria-hidden="true">◫</span> My projects <span className="nav-count">{projects.length}</span></Link>
+          <Link className="nav-item" href="/documents"><span className="nav-icon" data-tooltip="Project documents" aria-hidden="true">▤</span> Documents</Link>
+          <Link className="nav-item" href="/shared"><span className="nav-icon" data-tooltip="Documents and projects shared with you" aria-hidden="true">♧</span> Shared with me</Link>
         </nav>
         <p className="nav-label second-label">YOUR PROJECTS <button className="tiny-add" onClick={() => setNotice('Project creation is the next UI workflow; use POST /api/v1/projects for now.')} aria-label="Project creation info">+</button></p>
         <nav className="navigation project-navigation" aria-label="Your projects">
@@ -473,7 +474,7 @@ export default function HomePage() {
             </div>
           </section>
           <section className="overview-activity-grid" id="activity">
-            <aside className="activity-section"><div className="section-heading"><div><h2>Recent activity</h2><p>Latest changes from your projects.</p></div><button className="more-button" aria-label="Refresh activity" title="Refresh activity" onClick={() => void loadWorkspace()}>↻</button></div><div className="activity-list">{activities.map((activity, index) => <div className="activity-item" key={index}><span className={'activity-avatar avatar-' + activity.color}>{activity.initials}</span><div className="activity-copy"><p><strong>{activity.title}</strong> {activity.action} <a href="#activity">{activity.target}</a></p><span>{activity.time}</span></div></div>)}{!loading && !activities.length && <div className="empty-state compact-empty"><p>New project and document activity will appear here.</p></div>}{loading && <div className="workspace-loading" role="status"><span className="loading-spinner" aria-hidden="true" /><div><strong>Loading activity…</strong><p>Checking your latest project updates.</p></div></div>}</div><div className="activity-link"><a href="/documents">Open your documents <span>→</span></a></div><div className="tip-card"><span className="tip-sparkle">✦</span><p className="tip-label">NEXT UP</p><h3>Keep your team in sync.</h3><p>Open your documents to continue writing, review drafts, and keep project work organised.</p><a href="https://github.com/akhilrajakraj/academic-collab-platform">View project on GitHub <span>↗</span></a></div></aside>
+            <aside className="activity-section"><div className="section-heading"><div><h2>Recent activity</h2><p>Latest changes from your projects.</p></div><button className="more-button" aria-label="Refresh activity" title="Refresh activity" onClick={() => void loadWorkspace()}>↻</button></div><div className="activity-list">{activities.map((activity, index) => <div className="activity-item" key={index}><span className={'activity-avatar avatar-' + activity.color}>{activity.initials}</span><div className="activity-copy"><p><strong>{activity.title}</strong> {activity.action} <a href="#activity">{activity.target}</a></p><span>{activity.time}</span></div></div>)}{!loading && !activities.length && <div className="empty-state compact-empty"><p>New project and document activity will appear here.</p></div>}{loading && <div className="workspace-loading" role="status"><span className="loading-spinner" aria-hidden="true" /><div><strong>Loading activity…</strong><p>Checking your latest project updates.</p></div></div>}</div><div className="activity-link"><Link href="/documents">Open your documents <span>→</span></Link></div><div className="tip-card"><span className="tip-sparkle">✦</span><p className="tip-label">NEXT UP</p><h3>Keep your team in sync.</h3><p>Open your documents to continue writing, review drafts, and keep project work organised.</p><a href="https://github.com/akhilrajakraj/academic-collab-platform">View project on GitHub <span>↗</span></a></div></aside>
           </section>
           <footer className="page-footer"><span>Made for curious minds <span className="footer-heart">♥</span></span><span>Academic Collab · API-backed development preview</span></footer>
         </div>
