@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { EditorContent, useEditor } from '@tiptap/react';
+import { Extension, Mark } from '@tiptap/core';
+import TextStyle from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CollaborationPresence from '../../../components/collaboration-presence';
@@ -21,6 +23,55 @@ type ApiError = { message?: string | string[]; code?: string; currentUpdatedAt?:
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
 const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph' }] };
+
+const UnderlineMark = Mark.create({
+  name: 'underline',
+  parseHTML() { return [{ tag: 'u' }]; },
+  renderHTML({ HTMLAttributes }) { return ['u', HTMLAttributes, 0]; },
+});
+
+const SubscriptMark = Mark.create({
+  name: 'subscript',
+  parseHTML() { return [{ tag: 'sub' }]; },
+  renderHTML({ HTMLAttributes }) { return ['sub', HTMLAttributes, 0]; },
+});
+
+const SuperscriptMark = Mark.create({
+  name: 'superscript',
+  parseHTML() { return [{ tag: 'sup' }]; },
+  renderHTML({ HTMLAttributes }) { return ['sup', HTMLAttributes, 0]; },
+});
+
+const TextStyleAttributes = Extension.create({
+  name: 'textStyleAttributes',
+  addGlobalAttributes() {
+    return [{
+      types: ['textStyle'],
+      attributes: {
+        color: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.color || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.color ? { style: `color: ${attributes.color}` } : {},
+        },
+        backgroundColor: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.backgroundColor || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.backgroundColor ? { style: `background-color: ${attributes.backgroundColor}` } : {},
+        },
+        fontFamily: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.fontFamily || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.fontFamily ? { style: `font-family: ${attributes.fontFamily}` } : {},
+        },
+        fontSize: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.fontSize || null,
+          renderHTML: (attributes: Record<string, unknown>) => attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {},
+        },
+      },
+    }];
+  },
+});
 
 function messageOf(error: ApiError | null, fallback: string) {
   return Array.isArray(error?.message) ? error.message.join(' ') : error?.message || fallback;
@@ -80,6 +131,11 @@ export default function DocumentEditorPage() {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle,
+      TextStyleAttributes,
+      UnderlineMark,
+      SubscriptMark,
+      SuperscriptMark,
       Placeholder.configure({ placeholder: 'Start writing your ideas here…' }),
     ],
     content: EMPTY_DOC,
@@ -388,6 +444,28 @@ export default function DocumentEditorPage() {
               <button title="Italic" aria-label="Italic" disabled={!canEdit || !editor} className={editor?.isActive('italic') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button>
               <button title="Strike" aria-label="Strikethrough" disabled={!canEdit || !editor} className={editor?.isActive('strike') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></button>
               <button title="Inline code" aria-label="Inline code" disabled={!canEdit || !editor} className={editor?.isActive('code') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleCode().run()}>{'{}'}</button>
+              <button title="Underline" aria-label="Underline" disabled={!canEdit || !editor} className={editor?.isActive('underline') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleMark('underline').run()}><u>U</u></button>
+              <button title="Subscript" aria-label="Subscript" disabled={!canEdit || !editor} className={editor?.isActive('subscript') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleMark('subscript').unsetMark('superscript').run()}>x₂</button>
+              <button title="Superscript" aria-label="Superscript" disabled={!canEdit || !editor} className={editor?.isActive('superscript') ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleMark('superscript').unsetMark('subscript').run()}>x²</button>
+              <label className="toolbar-select-control" title="Font family">
+                <span className="sr-only">Font family</span>
+                <select aria-label="Font family" disabled={!canEdit || !editor} defaultValue="" onChange={(event) => { const value = event.target.value; if (value) editor?.chain().focus().setMark('textStyle', { fontFamily: value }).run(); event.target.value = ''; }}>
+                  <option value="" disabled>Font</option><option value="Arial, sans-serif">Arial</option><option value="Calibri, sans-serif">Calibri</option><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Verdana, sans-serif">Verdana</option><option value="monospace">Monospace</option>
+                </select>
+              </label>
+              <label className="toolbar-select-control" title="Font size">
+                <span className="sr-only">Font size</span>
+                <select aria-label="Font size" disabled={!canEdit || !editor} defaultValue="" onChange={(event) => { const value = event.target.value; if (value) editor?.chain().focus().setMark('textStyle', { fontSize: value }).run(); event.target.value = ''; }}>
+                  <option value="" disabled>Size</option><option value="10pt">10</option><option value="11pt">11</option><option value="12pt">12</option><option value="14pt">14</option><option value="16pt">16</option><option value="18pt">18</option><option value="24pt">24</option><option value="36pt">36</option>
+                </select>
+              </label>
+              <label className="toolbar-color-control" title="Text color">
+                <span>A</span><input aria-label="Text color" type="color" disabled={!canEdit || !editor} defaultValue="#26352b" onChange={(event) => editor?.chain().focus().setMark('textStyle', { color: event.target.value }).run()} />
+              </label>
+              <label className="toolbar-color-control" title="Text highlight">
+                <span className="highlight-letter">▰</span><input aria-label="Text highlight color" type="color" disabled={!canEdit || !editor} defaultValue="#fff29a" onChange={(event) => editor?.chain().focus().setMark('textStyle', { backgroundColor: event.target.value }).run()} />
+              </label>
+              <button title="Clear text styling" aria-label="Clear text styling" disabled={!canEdit || !editor} onClick={() => editor?.chain().focus().unsetMark('textStyle').unsetMark('underline').unsetMark('subscript').unsetMark('superscript').run()}>A×</button>
               <span className="toolbar-divider" />
               <button title="Heading 1" aria-label="Heading 1" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 1 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
               <button title="Heading 2" aria-label="Heading 2" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 2 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
