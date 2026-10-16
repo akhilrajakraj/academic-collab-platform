@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
-import { ProjectInvitationStatus, ProjectRole } from '@prisma/client';
+import { Prisma, ProjectInvitationStatus, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -125,7 +125,8 @@ export class InvitationsService {
     });
     if (!user) throw new UnauthorizedException('Account no longer exists.');
 
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
       const invitation = await tx.projectInvitation.findUnique({ where: { tokenHash } });
       if (!invitation || invitation.status !== ProjectInvitationStatus.PENDING) {
         throw new NotFoundException('Invitation not found or no longer available.');
@@ -160,8 +161,14 @@ export class InvitationsService {
           metadata: { invitationId: invitation.id, role: invitation.role },
         },
       });
-      return membership;
-    });
+        return membership;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('This invitation was already accepted or you are already a member.');
+      }
+      throw error;
+    }
   }
 
   async decline(token: string, userId: string) {
