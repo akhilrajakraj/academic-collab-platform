@@ -211,6 +211,7 @@ export default function DocumentEditorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [showComments, setShowComments] = useState(true);
   const [canEditTitle, setCanEditTitle] = useState(false);
+  const [pageLayoutState, setPageLayoutState] = useState({ pageSize: 'A4', pageOrientation: 'portrait', pageMargins: 'normal', pageBorder: 'none' });
   const contentRef = useRef<Record<string, unknown>>(EMPTY_DOC);
   const baselineRef = useRef('');
   const updatedAtRef = useRef('');
@@ -301,6 +302,13 @@ export default function DocumentEditorPage() {
       titleRef.current = doc.title;
       setStatus(doc.status);
       contentRef.current = doc.content && typeof doc.content === 'object' ? doc.content : EMPTY_DOC;
+      const loadedPageAttrs = (doc.content as { attrs?: Record<string, unknown> } | undefined)?.attrs;
+      setPageLayoutState({
+        pageSize: typeof loadedPageAttrs?.pageSize === 'string' ? loadedPageAttrs.pageSize : 'A4',
+        pageOrientation: typeof loadedPageAttrs?.pageOrientation === 'string' ? loadedPageAttrs.pageOrientation : 'portrait',
+        pageMargins: typeof loadedPageAttrs?.pageMargins === 'string' ? loadedPageAttrs.pageMargins : 'normal',
+        pageBorder: typeof loadedPageAttrs?.pageBorder === 'string' ? loadedPageAttrs.pageBorder : 'none',
+      });
       baselineRef.current = JSON.stringify({ title: doc.title, content: contentRef.current, status: doc.status });
       updatedAtRef.current = doc.updatedAt;
       if (editor) {
@@ -422,16 +430,15 @@ export default function DocumentEditorPage() {
     updateParagraphLayout({ paragraphBorder: node.paragraphBorder ? null : '#b9c5b3' });
   }
 
-  const pageLayout = editor?.getAttributes('doc') as { pageSize?: string; pageOrientation?: string; pageMargins?: string; pageBorder?: string } | undefined;
+  const pageLayout = pageLayoutState;
 
   function updatePageLayout(attribute: 'pageSize' | 'pageOrientation' | 'pageMargins' | 'pageBorder', value: string) {
     if (!editor || !canEdit) return;
     editor.chain().focus().command(({ tr, dispatch }) => {
-      if (dispatch) {
-        tr.setDocAttribute(attribute, value);
-      }
+      if (dispatch) tr.setDocAttribute(attribute, value);
       return true;
     }).run();
+    setPageLayoutState((current) => ({ ...current, [attribute]: value }));
   }
 
   function insertPageBreak() {
