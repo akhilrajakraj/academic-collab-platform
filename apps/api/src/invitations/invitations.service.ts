@@ -12,7 +12,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 const invitationLifetimeDays = 7;
-const assignableRoles = [ProjectRole.EDITOR, ProjectRole.REVIEWER, ProjectRole.VIEWER];
+const assignableRoles: ProjectRole[] = [ProjectRole.EDITOR, ProjectRole.REVIEWER, ProjectRole.VIEWER];
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
