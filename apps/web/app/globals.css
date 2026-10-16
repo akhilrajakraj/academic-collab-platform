@@ -525,3 +525,35 @@ body { font-size: 14px; line-height: 1.5; }
   .editor-workspace, .editor-main-column, .editor-canvas { display: block !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; background: white !important; }
   .editor-canvas .tiptap-content { border: 0 !important; box-shadow: none !important; max-width: none; min-height: 0; padding: 0 !important; }
 }
+
+
+/* Visible Microsoft Word-style page border inside the paper margins. */
+.editor-canvas .tiptap-content {
+  position: relative;
+  border: 1px solid #b9c5b3;
+  outline: 1px solid rgba(185,197,179,.45);
+  outline-offset: -1px;
+}
+.editor-canvas .tiptap-content::after {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  border: 1px solid #d4ddd0;
+  pointer-events: none;
+  z-index: 0;
+}
+.editor-canvas .tiptap-content > * {
+  position: relative;
+  z-index: 1;
+}
+.editor-canvas .tiptap-content:focus {
+  border-color: #9aaf8b;
+  outline-color: #9aaf8b;
+}
+@media (max-width: 760px) {
+  .editor-canvas .tiptap-content::after { inset: 12px; }
+}
+@media print {
+  .editor-canvas .tiptap-content { border: 0 !important; outline: 0 !important; }
+  .editor-canvas .tiptap-content::after { display: none !important; }
+}
