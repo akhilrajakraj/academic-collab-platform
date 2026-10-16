@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { Extension, Mark, Node } from '@tiptap/core';
+import { Extension, Mark, Node, type JSONContent } from '@tiptap/core';
 import TextStyle from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -461,12 +461,15 @@ export default function DocumentEditorPage() {
     return null;
   }
 
-  function updateSelectedTable(transform: (rows: Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }>) => Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }>) {
+  function updateSelectedTable(transform: (rows: JSONContent[]) => JSONContent[]) {
     const table = selectedTable();
     if (!editor || !table) return;
-    const json = table.node.toJSON() as { type: string; attrs?: Record<string, unknown>; content: Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }> };
-    const rows = transform(json.content);
-    editor.chain().focus().insertContentAt({ from: table.pos, to: table.pos + table.node.nodeSize }, { ...json, content: rows }).run();
+    const json = table.node.toJSON() as JSONContent;
+    const rows = transform(json.content || []);
+    editor.chain().focus().insertContentAt(
+      { from: table.pos, to: table.pos + table.node.nodeSize },
+      { ...json, content: rows },
+    ).run();
   }
 
   function modifyTable(action: 'row-after' | 'row-before' | 'row-delete' | 'column-after' | 'column-before' | 'column-delete' | 'header-toggle' | 'merge-right' | 'split-cell') {
