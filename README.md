@@ -58,3 +58,8 @@ docs/                     Product and architecture documentation
 - Use a unique password and a strong local JWT secret.
 - Authentication includes basic per-process throttling for registration/login; email verification and recovery flows are still missing.
 - Do not deploy this early development release with real student data before security review and automated authorization tests.
+
+
+## Development roadmap
+
+The implementation is divided into independently reviewable modules covering platform foundation, identity and access control, project membership, document editing, review and revisions, real-time collaboration, export, academic assistance, and release readiness. See [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md) for current status, delivery order, verification criteria, and end-to-end acceptance scenario.
