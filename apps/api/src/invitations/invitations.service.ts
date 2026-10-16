@@ -127,40 +127,40 @@ export class InvitationsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-      const invitation = await tx.projectInvitation.findUnique({ where: { tokenHash } });
-      if (!invitation || invitation.status !== ProjectInvitationStatus.PENDING) {
-        throw new NotFoundException('Invitation not found or no longer available.');
-      }
-      if (invitation.expiresAt.getTime() <= Date.now()) {
-        throw new ConflictException('This invitation has expired.');
-      }
-      if (invitation.email !== user.email.toLowerCase()) {
-        throw new ForbiddenException('Sign in with the email address this invitation was sent to.');
-      }
+        const invitation = await tx.projectInvitation.findUnique({ where: { tokenHash } });
+        if (!invitation || invitation.status !== ProjectInvitationStatus.PENDING) {
+          throw new NotFoundException('Invitation not found or no longer available.');
+        }
+        if (invitation.expiresAt.getTime() <= Date.now()) {
+          throw new ConflictException('This invitation has expired.');
+        }
+        if (invitation.email !== user.email.toLowerCase()) {
+          throw new ForbiddenException('Sign in with the email address this invitation was sent to.');
+        }
 
-      const existing = await tx.projectMember.findUnique({
-        where: { projectId_userId: { projectId: invitation.projectId, userId } },
-        select: { id: true },
-      });
-      if (existing) throw new ConflictException('You are already a member of this project.');
+        const existing = await tx.projectMember.findUnique({
+          where: { projectId_userId: { projectId: invitation.projectId, userId } },
+          select: { id: true },
+        });
+        if (existing) throw new ConflictException('You are already a member of this project.');
 
-      const membership = await tx.projectMember.create({
-        data: { projectId: invitation.projectId, userId, role: invitation.role },
-        include: { user: { select: { id: true, email: true, displayName: true } } },
-      });
-      await tx.projectInvitation.update({
-        where: { id: invitation.id },
-        data: { status: ProjectInvitationStatus.ACCEPTED, acceptedAt: new Date() },
-      });
-      await tx.activity.create({
-        data: {
-          projectId: invitation.projectId,
-          actorId: userId,
-          type: 'INVITATION_ACCEPTED',
-          message: `${user.displayName} joined the project`,
-          metadata: { invitationId: invitation.id, role: invitation.role },
-        },
-      });
+        const membership = await tx.projectMember.create({
+          data: { projectId: invitation.projectId, userId, role: invitation.role },
+          include: { user: { select: { id: true, email: true, displayName: true } } },
+        });
+        await tx.projectInvitation.update({
+          where: { id: invitation.id },
+          data: { status: ProjectInvitationStatus.ACCEPTED, acceptedAt: new Date() },
+        });
+        await tx.activity.create({
+          data: {
+            projectId: invitation.projectId,
+            actorId: userId,
+            type: 'INVITATION_ACCEPTED',
+            message: `${user.displayName} joined the project`,
+            metadata: { invitationId: invitation.id, role: invitation.role },
+          },
+        });
         return membership;
       });
     } catch (error) {
