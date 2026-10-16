@@ -86,29 +86,31 @@ export class InvitationsService {
 
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + invitationLifetimeDays * 24 * 60 * 60 * 1000);
-    const invitation = await this.prisma.projectInvitation.create({
-      data: {
-        projectId,
-        email,
-        role,
-        tokenHash: hashToken(token),
-        invitedById: userId,
-        expiresAt,
-      },
-      select: {
-        id: true, projectId: true, email: true, role: true, status: true,
-        expiresAt: true, createdAt: true,
-      },
-    });
-
-    await this.prisma.activity.create({
-      data: {
-        projectId,
-        actorId: userId,
-        type: 'INVITATION_CREATED',
-        message: `Invited ${email} to the project`,
-        metadata: { invitationId: invitation.id, role },
-      },
+    const invitation = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.projectInvitation.create({
+        data: {
+          projectId,
+          email,
+          role,
+          tokenHash: hashToken(token),
+          invitedById: userId,
+          expiresAt,
+        },
+        select: {
+          id: true, projectId: true, email: true, role: true, status: true,
+          expiresAt: true, createdAt: true,
+        },
+      });
+      await tx.activity.create({
+        data: {
+          projectId,
+          actorId: userId,
+          type: 'INVITATION_CREATED',
+          message: `Invited ${email} to the project`,
+          metadata: { invitationId: created.id, role },
+        },
+      });
+      return created;
     });
 
     // The raw token is returned only at creation time; only its hash is persisted.
