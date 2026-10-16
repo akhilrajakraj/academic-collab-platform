@@ -249,7 +249,7 @@ export default function DocumentEditorPage() {
       return;
     }
     updatedAtRef.current = result.updatedAt;
-    setDocument(result);
+    setDocument((current) => current ? { ...current, ...result, project: current.project } : current);
     setStatus(nextStatus);
     baselineRef.current = JSON.stringify({ title: titleRef.current.trim(), content: contentRef.current, status: nextStatus });
     setSaveState('saved');
