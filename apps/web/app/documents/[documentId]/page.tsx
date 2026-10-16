@@ -140,6 +140,52 @@ const PageBreakNode = Node.create({
   renderHTML() { return ['div', { 'data-page-break': 'true', 'aria-label': 'Page break' }]; },
 });
 
+
+const TableCellNode = Node.create({
+  name: 'tableCell',
+  content: 'block+',
+  tableRole: 'cell',
+  isolating: true,
+  addAttributes() {
+    return {
+      colspan: { default: 1, parseHTML: (el: HTMLElement) => Number(el.getAttribute('colspan') || 1), renderHTML: (attrs: Record<string, unknown>) => Number(attrs.colspan) > 1 ? { colspan: attrs.colspan } : {} },
+      rowspan: { default: 1, parseHTML: (el: HTMLElement) => Number(el.getAttribute('rowspan') || 1), renderHTML: (attrs: Record<string, unknown>) => Number(attrs.rowspan) > 1 ? { rowspan: attrs.rowspan } : {} },
+      colwidth: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-colwidth')?.split(',').map(Number) || null, renderHTML: (attrs: Record<string, unknown>) => attrs.colwidth ? { 'data-colwidth': (attrs.colwidth as number[]).join(',') } : {} },
+      textAlign: { default: 'left', parseHTML: (el: HTMLElement) => el.style.textAlign || 'left', renderHTML: (attrs: Record<string, unknown>) => ({ style: `text-align: ${attrs.textAlign || 'left'}; vertical-align: middle` }) },
+      backgroundColor: { default: null, parseHTML: (el: HTMLElement) => el.style.backgroundColor || null, renderHTML: (attrs: Record<string, unknown>) => attrs.backgroundColor ? { style: `background-color: ${attrs.backgroundColor}; text-align: ${attrs.textAlign || 'left'}; vertical-align: middle` } : { style: `text-align: ${attrs.textAlign || 'left'}; vertical-align: middle` } },
+      borderColor: { default: '#cbd5c5', parseHTML: (el: HTMLElement) => el.getAttribute('data-border-color') || '#cbd5c5', renderHTML: (attrs: Record<string, unknown>) => ({ 'data-border-color': attrs.borderColor || '#cbd5c5' }) },
+    };
+  },
+  parseHTML() { return [{ tag: 'td' }]; },
+  renderHTML({ HTMLAttributes }) { return ['td', HTMLAttributes, 0]; },
+});
+
+const TableHeaderNode = TableCellNode.extend({
+  name: 'tableHeader',
+  tableRole: 'header_cell',
+  parseHTML() { return [{ tag: 'th' }]; },
+  renderHTML({ HTMLAttributes }) { return ['th', HTMLAttributes, 0]; },
+});
+
+const TableRowNode = Node.create({
+  name: 'tableRow',
+  content: '(tableCell | tableHeader)+',
+  tableRole: 'row',
+  parseHTML() { return [{ tag: 'tr' }]; },
+  renderHTML({ HTMLAttributes }) { return ['tr', HTMLAttributes, 0]; },
+});
+
+const TableNode = Node.create({
+  name: 'table',
+  group: 'block',
+  content: 'tableRow+',
+  tableRole: 'table',
+  isolating: true,
+  selectable: true,
+  parseHTML() { return [{ tag: 'table' }]; },
+  renderHTML({ HTMLAttributes }) { return ['table', { ...HTMLAttributes, class: 'academic-editor-table' }, ['tbody', 0]]; },
+});
+
 function messageOf(error: ApiError | null, fallback: string) {
   return Array.isArray(error?.message) ? error.message.join(' ') : error?.message || fallback;
 }
@@ -203,6 +249,10 @@ export default function DocumentEditorPage() {
       ParagraphLayoutAttributes,
       PageLayoutAttributes,
       PageBreakNode,
+      TableNode,
+      TableRowNode,
+      TableCellNode,
+      TableHeaderNode,
       UnderlineMark,
       SubscriptMark,
       SuperscriptMark,
@@ -387,6 +437,104 @@ export default function DocumentEditorPage() {
   function insertPageBreak() {
     if (!editor || !canEdit) return;
     editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
+  }
+
+
+  function insertTable() {
+    if (!editor || !canEdit) return;
+    const rows = Array.from({ length: 3 }, (_, rowIndex) => ({
+      type: 'tableRow',
+      content: Array.from({ length: 3 }, (_, colIndex) => ({
+        type: rowIndex === 0 ? 'tableHeader' : 'tableCell',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: rowIndex === 0 ? `Header ${colIndex + 1}` : ' ' }] }],
+      })),
+    }));
+    editor.chain().focus().insertContent({ type: 'table', content: rows }).run();
+  }
+
+  function selectedTable() {
+    if (!editor) return null;
+    const { $from } = editor.state.selection;
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      if ($from.node(depth).type.name === 'table') return { node: $from.node(depth), pos: $from.before(depth), depth };
+    }
+    return null;
+  }
+
+  function updateSelectedTable(transform: (rows: Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }>) => Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }>) {
+    const table = selectedTable();
+    if (!editor || !table) return;
+    const json = table.node.toJSON() as { type: string; attrs?: Record<string, unknown>; content: Array<{ type: string; content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }> }> };
+    const rows = transform(json.content);
+    editor.chain().focus().insertContentAt({ from: table.pos, to: table.pos + table.node.nodeSize }, { ...json, content: rows }).run();
+  }
+
+  function modifyTable(action: 'row-after' | 'row-before' | 'row-delete' | 'column-after' | 'column-before' | 'column-delete' | 'header-toggle' | 'merge-right' | 'split-cell') {
+    if (!editor || !canEdit) return;
+    const { $from } = editor.state.selection;
+    let cellDepth = $from.depth;
+    while (cellDepth > 0 && !['tableCell', 'tableHeader'].includes($from.node(cellDepth).type.name)) cellDepth -= 1;
+    const table = selectedTable();
+    if (!table) return;
+    const rowDepth = cellDepth - 1;
+    const rowIndex = rowDepth > 0 ? $from.index(rowDepth) : 0;
+    const cellIndex = cellDepth > 0 ? $from.index(cellDepth) : 0;
+    const cellType = $from.node(cellDepth)?.type.name;
+    updateSelectedTable((rows) => {
+      const safeRows = rows.map((row) => ({ ...row, content: [...(row.content || [])] }));
+      const currentRow = safeRows[rowIndex];
+      if (!currentRow) return rows;
+      if (action === 'row-before' || action === 'row-after') {
+        const template = currentRow.content || [];
+        const newRow = { type: 'tableRow', content: template.map((cell) => ({ type: cell.type, attrs: { ...(cell.attrs || {}), colspan: 1, rowspan: 1 }, content: [{ type: 'paragraph' }] })) };
+        safeRows.splice(rowIndex + (action === 'row-after' ? 1 : 0), 0, newRow);
+      } else if (action === 'row-delete') {
+        if (safeRows.length > 1) safeRows.splice(rowIndex, 1);
+      } else if (action === 'column-before' || action === 'column-after') {
+        safeRows.forEach((row) => {
+          const cells = row.content || [];
+          const template = cells[Math.min(cellIndex, cells.length - 1)] || cells[0];
+          if (template) cells.splice(cellIndex + (action === 'column-after' ? 1 : 0), 0, { type: rowIndex === 0 && template.type === 'tableHeader' ? 'tableHeader' : 'tableCell', content: [{ type: 'paragraph' }] });
+        });
+      } else if (action === 'column-delete') {
+        if ((currentRow.content || []).length > 1) safeRows.forEach((row) => { if ((row.content || []).length > 1) row.content?.splice(cellIndex, 1); });
+      } else if (action === 'header-toggle') {
+        safeRows[0]?.content?.forEach((cell) => { cell.type = cell.type === 'tableHeader' ? 'tableCell' : 'tableHeader'; });
+      } else if (action === 'merge-right') {
+        const cells = currentRow.content || [];
+        if (cells[cellIndex] && cells[cellIndex + 1]) {
+          const first = cells[cellIndex];
+          const second = cells[cellIndex + 1];
+          first.attrs = { ...(first.attrs || {}), colspan: Number(first.attrs?.colspan || 1) + Number(second.attrs?.colspan || 1) };
+          first.content = [...(first.content || []), ...(second.content || [])];
+          cells.splice(cellIndex + 1, 1);
+        }
+      } else if (action === 'split-cell') {
+        const cell = currentRow.content?.[cellIndex];
+        const span = Number(cell?.attrs?.colspan || 1);
+        if (cell && span > 1) {
+          cell.attrs = { ...(cell.attrs || {}), colspan: 1 };
+          for (let i = 1; i < span; i += 1) currentRow.content?.splice(cellIndex + i, 0, { type: cellType === 'tableHeader' ? 'tableHeader' : 'tableCell', content: [{ type: 'paragraph' }] });
+        }
+      }
+      return safeRows;
+    });
+  }
+
+  function styleSelectedCells(attribute: 'textAlign' | 'backgroundColor' | 'borderColor', value: string) {
+    if (!editor || !canEdit) return;
+    const { $from } = editor.state.selection;
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      if (['tableCell', 'tableHeader'].includes($from.node(depth).type.name)) {
+        const pos = $from.before(depth);
+        const node = $from.node(depth);
+        editor.chain().focus().command(({ tr, dispatch }) => {
+          if (dispatch) tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attribute]: value });
+          return true;
+        }).run();
+        return;
+      }
+    }
   }
 
   function downloadWordDocument() {
@@ -628,6 +776,21 @@ export default function DocumentEditorPage() {
                 </select>
               </label>
               <button title="Insert page break" aria-label="Insert page break" disabled={!canEdit || !editor} onClick={insertPageBreak}>↵▱</button>
+              <span className="toolbar-divider" />
+              <span className="toolbar-divider" />
+              <button title="Insert 3 by 3 table" aria-label="Insert table" disabled={!canEdit || !editor} onClick={insertTable}>▦ Table</button>
+              <button title="Add row above" aria-label="Add row above" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('row-before')}>Row ↑</button>
+              <button title="Add row below" aria-label="Add row below" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('row-after')}>Row ↓</button>
+              <button title="Delete current row" aria-label="Delete current row" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('row-delete')}>Row ×</button>
+              <button title="Add column before" aria-label="Add column before" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('column-before')}>Col ←</button>
+              <button title="Add column after" aria-label="Add column after" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('column-after')}>Col →</button>
+              <button title="Delete current column" aria-label="Delete current column" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('column-delete')}>Col ×</button>
+              <button title="Toggle header row" aria-label="Toggle table header row" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('header-toggle')}>Header</button>
+              <button title="Merge current cell with cell to the right" aria-label="Merge cell right" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('merge-right')}>Merge →</button>
+              <button title="Split merged cell" aria-label="Split cell" disabled={!canEdit || !editor || !editor.isActive('table')} onClick={() => modifyTable('split-cell')}>Split</button>
+              <label className="toolbar-select-control" title="Cell alignment"><span className="sr-only">Cell alignment</span><select aria-label="Cell alignment" disabled={!canEdit || !editor || !editor.isActive('table')} defaultValue="" onChange={(event) => { if (event.target.value) styleSelectedCells('textAlign', event.target.value); event.target.value = ''; }}><option value="" disabled>Cell align</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+              <label className="toolbar-color-control" title="Cell shading"><span aria-hidden="true">▧</span><input aria-label="Cell shading color" type="color" disabled={!canEdit || !editor || !editor.isActive('table')} defaultValue="#edf3e4" onChange={(event) => styleSelectedCells('backgroundColor', event.target.value)} /></label>
+              <label className="toolbar-color-control" title="Cell border color"><span aria-hidden="true">▤</span><input aria-label="Cell border color" type="color" disabled={!canEdit || !editor || !editor.isActive('table')} defaultValue="#cbd5c5" onChange={(event) => styleSelectedCells('borderColor', event.target.value)} /></label>
               <span className="toolbar-divider" />
               <button title="Heading 1" aria-label="Heading 1" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 1 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
               <button title="Heading 2" aria-label="Heading 2" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 2 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
