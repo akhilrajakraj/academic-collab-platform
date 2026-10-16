@@ -12,7 +12,7 @@ A student can create a project, invite collaborators, co-author a structured doc
 |---|---|---|---|
 | M0 — Platform foundation | pnpm workspace, Next.js web app, NestJS API, Prisma/PostgreSQL, local Docker services, CI | Existing foundation; verification required | Clean install, migrations, build, lint/typecheck, health checks pass |
 | M1 — Identity and access control | Registration/login, token validation, project membership, role policy, validation, security baseline | Existing basics; hardening in progress | Cross-account and role-based API tests prove no unauthorized reads/writes |
-| M2 — Project and membership collaboration | Project lifecycle, invitations, accept/reject/expire/revoke, role management, member UI | Project CRUD exists; invitations planned | Owner invites a collaborator and can safely change/revoke membership |
+| M2 — Project and membership collaboration | Project lifecycle, invitations, accept/decline/expire/revoke, role management, member UI | Invitation API, schema migration and team UI implemented on this branch; runtime verification pending | Owner invites a collaborator and can safely change/revoke membership |
 | M3 — Document editing and persistence | Rich-text editor, structured content, autosave, save state, stale-write protection | API persistence/revisions exist; stale-write protection in progress; editor planned | Edits survive refresh and concurrent stale saves return a conflict instead of overwriting |
 | M4 — Review and revision workflow | Comments, anchored comments, resolve/reopen, document status transitions, revision history/restore | Basic comment and revision APIs exist; full UI/workflow planned | Reviewers can comment; permitted editors manage status; old versions can be restored safely |
 | M5 — Real-time collaboration | Yjs document model, WebSocket provider, presence, reconnect/recovery, server-side authorization | Planned | Two clients can edit concurrently and converge after reconnect |
@@ -20,10 +20,13 @@ A student can create a project, invite collaborators, co-author a structured doc
 | M7 — Academic assistance | Opt-in outline suggestions, writing feedback, citation assistance, source-aware suggestions | Planned | AI output is reviewable, source-aware where applicable, and never silently replaces user text |
 | M8 — Release readiness | Accessibility, observability, backups, rate limits, security headers, deployment/runbooks | Partial foundation; verification required | Reproducible release, documented recovery, security and accessibility checks pass |
 
-## Current implementation focus: M1 + M3 API correctness
+## Current implementation focus: M1 API correctness and M2 membership collaboration
 
 ### Delivered on this development branch
 
+- M2 adds a `ProjectInvitation` data model and migration with seven-day expiry, lifecycle state, assignable roles, and a SHA-256 token hash; the raw invitation token is returned only at creation.
+- M2 adds owner-authorized endpoints to create/list/revoke invitations, list members, change non-owner member roles, and remove non-owner members. Authenticated invitees can accept or decline a token only when their account email matches the invited email.
+- M2 adds a responsive team panel to the dashboard for member roles, invitation creation, one-time token display/copy, invitation status, revocation and acceptance.
 - M1 input validation now rejects whitespace-only display names, project names, document titles and comment bodies.
 - Document status updates now follow an explicit transition matrix. Only the project owner can archive or reopen archived documents; invalid transitions return HTTP 400.
 - Added optional `expectedUpdatedAt` to the document update DTO. Clients can send the ISO-8601 `updatedAt` value returned by the document API.
@@ -35,11 +38,11 @@ A student can create a project, invite collaborators, co-author a structured doc
 
 1. Confirm whitespace-only display names, project names, document titles and comment bodies return HTTP 400.
 2. Confirm editors cannot archive or reopen documents and invalid status transitions return HTTP 400.
-3. Install from the committed lockfile and generate the Prisma client.
-2. Run API typecheck, lint, and build.
-3. Exercise a normal document update and confirm the response includes the latest `updatedAt`.
-4. Submit an update with a stale `expectedUpdatedAt`; confirm HTTP 409 and verify that neither document content nor revision history was changed by the failed transaction.
-5. Submit a valid update with the latest version; confirm it succeeds and creates a revision only for a title/content edit.
+3. Install dependencies, generate the Prisma client, and run API/web typecheck, lint, and build.
+4. Apply the new invitation migration against a clean PostgreSQL database and an existing development database.
+5. Verify owners can invite and revoke; non-owners cannot manage invitations or membership; owner role cannot be assigned, changed or removed.
+6. Verify expired, reused, revoked and wrong-email tokens are rejected, and a valid token creates exactly one membership.
+7. Verify a normal document update succeeds and a stale `expectedUpdatedAt` returns HTTP 409 without changing content or adding a revision.
 
 ## Module delivery sequence
 
@@ -50,11 +53,9 @@ A student can create a project, invite collaborators, co-author a structured doc
 - Add conflict-safe writes and tests for unauthorized access and stale updates.
 
 ### M2.1 — Membership invitations
-- Add invitation records with unique, expiring tokens stored as hashes.
-- Add create, accept, decline, revoke and resend flows.
-- Restrict invitation creation and role changes to project owners.
-- Add a member list and invitation states to the project UI.
-- Test expired, reused, revoked and cross-project invitation tokens.
+- Implemented: invitation records, hashed tokens, expiry, create/list/accept/decline/revoke, member list, role changes and removal.
+- Implemented: owner-only management and email match on acceptance.
+- Remaining: send actual email invitations, add resend/expired-state cleanup, and verify lifecycle/concurrency behavior with automated tests.
 
 ### M3.1 — Writing experience
 - Add a Tiptap editor using the document JSON format already stored by the API.
