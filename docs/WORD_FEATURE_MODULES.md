@@ -38,7 +38,7 @@ This roadmap decomposes the Microsoft Word feature inventory into independently 
 
 ## Current status
 
-- M01: In progress. The current editor already has basic marks, headings 1–2, lists, blockquote, code block, horizontal rule, clear formatting, undo/redo, autosave and role-based editability. The first incremental delivery adds heading level 3, paragraph reset and inline code controls.
+- M01: In progress. Existing controls cover bold, italic, strike, headings 1–3, normal paragraph, inline code, lists, blockquote, code block, horizontal rule, clear formatting, undo/redo, autosave and role-based editability. The first incremental delivery added Heading 3, Normal paragraph and Inline code controls. Additional work is still needed for keyboard/accessibility review and automated coverage.
 - M04: Partial visual foundation only. A visible border exists around the editor surface; configurable document page borders and print pagination are not implemented.
 - M10: Partial. General document comments and resolve/reopen exist; text-range anchoring and threaded replies are not complete.
 - M12: Partial. Authenticated presence exists; concurrent text synchronization and durable Yjs persistence are not complete.
