@@ -151,8 +151,8 @@ model ProjectInvitation {
   project     Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   invitedBy   User                    @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
 
-  @@unique([projectId, email, status])
   @@index([projectId, createdAt])
+  @@index([projectId, email, status])
   @@index([email, status])
   @@index([expiresAt, status])
 }
