@@ -9,7 +9,7 @@ export class UpdateDocumentDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/\\S/, { message: 'Document title cannot be blank.' })
+  @Matches(/\S/, { message: 'Document title cannot be blank.' })
   @MinLength(1)
   @MaxLength(160)
   title?: string;

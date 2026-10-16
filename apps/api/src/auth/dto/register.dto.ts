@@ -6,7 +6,7 @@ export class RegisterDto {
   email!: string;
 
   @IsString()
-  @Matches(/\\S/, { message: 'Display name cannot be blank.' })
+  @Matches(/\S/, { message: 'Display name cannot be blank.' })
   @MinLength(2)
   @MaxLength(80)
   displayName!: string;

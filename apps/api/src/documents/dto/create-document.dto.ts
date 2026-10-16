@@ -2,7 +2,7 @@ import { IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'c
 
 export class CreateDocumentDto {
   @IsString()
-  @Matches(/\\S/, { message: 'Document title cannot be blank.' })
+  @Matches(/\S/, { message: 'Document title cannot be blank.' })
   @MinLength(1)
   @MaxLength(160)
   title!: string;
