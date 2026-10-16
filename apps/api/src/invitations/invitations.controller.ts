@@ -5,6 +5,7 @@ import { CurrentUserId } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { InvitationTokenDto } from './dto/invitation-token.dto';
 import { InvitationsService } from './invitations.service';
 
 @UseGuards(JwtAuthGuard)
@@ -66,12 +67,12 @@ export class InvitationsController {
   constructor(private readonly invitations: InvitationsService) {}
 
   @Post('accept')
-  accept(@Body('token') token: string, @CurrentUserId() userId: string) {
-    return this.invitations.accept(token, userId);
+  accept(@Body() dto: InvitationTokenDto, @CurrentUserId() userId: string) {
+    return this.invitations.accept(dto.token, userId);
   }
 
   @Post('decline')
-  decline(@Body('token') token: string, @CurrentUserId() userId: string) {
-    return this.invitations.decline(token, userId);
+  decline(@Body() dto: InvitationTokenDto, @CurrentUserId() userId: string) {
+    return this.invitations.decline(dto.token, userId);
   }
 }
