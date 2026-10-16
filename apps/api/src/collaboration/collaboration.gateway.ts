@@ -40,6 +40,10 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
   @WebSocketServer()
   server!: Server;
 
+  // Socket.IO removes room membership before `disconnect`; keep our own index so
+  // presence can be refreshed for every document the socket had joined.
+  private readonly joinedRoomsBySocket = new Map<string, Set<string>>();
+
   constructor(
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
@@ -69,11 +73,12 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
   }
 
   async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
-    const collaborator = client.data.collaborator;
-    if (!collaborator) return;
+    const rooms = this.joinedRoomsBySocket.get(client.id);
+    this.joinedRoomsBySocket.delete(client.id);
+    if (!rooms) return;
 
-    for (const room of client.rooms) {
-      if (!room.startsWith('document:')) continue;
+    // Do not rely on client.rooms here: Socket.IO may already have cleared it.
+    for (const room of rooms) {
       await this.broadcastPresence(room);
     }
   }
@@ -123,14 +128,18 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
     client.data.collaborator = collaborator;
 
     // A socket may only enter a room after server-side project membership validation.
-    await client.join(this.roomFor(document.id));
+    const room = this.roomFor(document.id);
+    await client.join(room);
+    const joinedRooms = this.joinedRoomsBySocket.get(client.id) ?? new Set<string>();
+    joinedRooms.add(room);
+    this.joinedRoomsBySocket.set(client.id, joinedRooms);
     client.emit('document-joined', {
       documentId: document.id,
       projectId: document.projectId,
       collaborator,
       canEdit: membership.role === ProjectRole.OWNER || membership.role === ProjectRole.EDITOR,
     });
-    await this.broadcastPresence(this.roomFor(document.id));
+    await this.broadcastPresence(room);
     return { ok: true, documentId: document.id };
   }
 
@@ -144,6 +153,9 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
     }
     const room = this.roomFor(body.documentId);
     await client.leave(room);
+    const joinedRooms = this.joinedRoomsBySocket.get(client.id);
+    joinedRooms?.delete(room);
+    if (joinedRooms?.size === 0) this.joinedRoomsBySocket.delete(client.id);
     await this.broadcastPresence(room);
     return { ok: true };
   }
