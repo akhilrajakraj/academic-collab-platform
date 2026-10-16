@@ -2,7 +2,7 @@ import { IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'c
 
 export class CreateCommentDto {
   @IsString()
-  @Matches(/\\S/, { message: 'Comment body cannot be blank.' })
+  @Matches(/\S/, { message: 'Comment body cannot be blank.' })
   @MinLength(1)
   @MaxLength(5000)
   body!: string;

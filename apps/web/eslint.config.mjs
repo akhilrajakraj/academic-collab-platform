@@ -6,6 +6,11 @@ const compat = new FlatCompat({
   baseDirectory: dirname(fileURLToPath(import.meta.url)),
 });
 
-export default [
+const eslintConfig = [
+  // Next.js generates this file, including triple-slash references required by TypeScript.
+  // It is generated metadata rather than application source, so it should not be linted.
+  { ignores: ['next-env.d.ts', '.next/**'] },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 ];
+
+export default eslintConfig;
