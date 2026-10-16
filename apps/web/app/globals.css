@@ -426,3 +426,13 @@ body { font-size: 14px; line-height: 1.5; }
   .projects-page-heading, .shared-page-heading { align-items: flex-start; flex-direction: column; }
   .activity-popover { right: -8px; }
 }
+
+/* Align document table labels to the six-column document rows (including the file icon). */
+.documents-table-head { grid-template-columns: 30px minmax(160px,1.5fr) minmax(120px,1fr) minmax(95px,.65fr) minmax(110px,.8fr) 64px; gap: 14px; }
+.documents-table-head span:first-child { grid-column: 1 / 3; }
+@media (max-width: 1050px) {
+  .documents-table-head { grid-template-columns: 28px minmax(130px,1.4fr) minmax(100px,1fr) minmax(85px,.7fr) minmax(90px,.8fr) 55px; gap: 9px; }
+}
+@media (max-width: 760px) {
+  .documents-table-head { display: none; }
+}
