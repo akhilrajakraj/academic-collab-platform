@@ -105,7 +105,7 @@ export class InvitationsService {
       data: {
         projectId,
         actorId: userId,
-        type: 'MEMBER_ADDED',
+        type: 'INVITATION_CREATED',
         message: `Invited ${email} to the project`,
         metadata: { invitationId: invitation.id, role },
       },
@@ -153,7 +153,7 @@ export class InvitationsService {
         data: {
           projectId: invitation.projectId,
           actorId: userId,
-          type: 'MEMBER_ADDED',
+          type: 'INVITATION_ACCEPTED',
           message: `${user.displayName} joined the project`,
           metadata: { invitationId: invitation.id, role: invitation.role },
         },
@@ -194,9 +194,20 @@ export class InvitationsService {
     if (invitation.status !== ProjectInvitationStatus.PENDING) {
       throw new ConflictException('Only pending invitations can be revoked.');
     }
-    await this.prisma.projectInvitation.update({
-      where: { id: invitation.id },
-      data: { status: ProjectInvitationStatus.REVOKED, revokedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.projectInvitation.update({
+        where: { id: invitation.id },
+        data: { status: ProjectInvitationStatus.REVOKED, revokedAt: new Date() },
+      });
+      await tx.activity.create({
+        data: {
+          projectId,
+          actorId: userId,
+          type: 'INVITATION_REVOKED',
+          message: `Revoked an invitation to ${invitation.id}`,
+          metadata: { invitationId: invitation.id },
+        },
+      });
     });
     return { revoked: true };
   }
@@ -242,7 +253,7 @@ export class InvitationsService {
         data: {
           projectId,
           actorId: userId,
-          type: 'MEMBER_ADDED',
+          type: 'MEMBER_REMOVED',
           message: `Removed ${member.user.displayName} from the project`,
           metadata: { removedUserId: member.userId },
         },
