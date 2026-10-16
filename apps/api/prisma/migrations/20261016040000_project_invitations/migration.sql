@@ -1,5 +1,9 @@
 -- Create project invitation lifecycle records. Invitation tokens are stored as hashes.
 CREATE TYPE "ProjectInvitationStatus" AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED', 'REVOKED');
+ALTER TYPE "ActivityType" ADD VALUE 'MEMBER_REMOVED';
+ALTER TYPE "ActivityType" ADD VALUE 'INVITATION_CREATED';
+ALTER TYPE "ActivityType" ADD VALUE 'INVITATION_ACCEPTED';
+ALTER TYPE "ActivityType" ADD VALUE 'INVITATION_REVOKED';
 
 CREATE TABLE "ProjectInvitation" (
     "id" UUID NOT NULL,
