@@ -530,17 +530,25 @@ body { font-size: 14px; line-height: 1.5; }
 /* Visible Microsoft Word-style page border inside the paper margins. */
 .editor-canvas .tiptap-content {
   position: relative;
-  border: 1px solid #b9c5b3;
-  outline: 1px solid rgba(185,197,179,.45);
-  outline-offset: -1px;
+  border: 1px solid transparent;
+  outline: 0;
 }
 .editor-canvas .tiptap-content::after {
   content: "";
   position: absolute;
   inset: 22px;
-  border: 1px solid #d4ddd0;
+  border: 0;
   pointer-events: none;
   z-index: 0;
+}
+.editor-canvas.page-border-single .tiptap-content::after {
+  border: 1px solid #9aaf8b;
+}
+.editor-canvas.page-border-double .tiptap-content::after {
+  border: 3px double #9aaf8b;
+}
+.editor-canvas.page-border-none .tiptap-content::after {
+  border: 0;
 }
 .editor-canvas .tiptap-content > * {
   position: relative;
@@ -569,9 +577,9 @@ body { font-size: 14px; line-height: 1.5; }
 .editor-canvas.page-margins-narrow .tiptap-content { padding: 38px; }
 .editor-canvas.page-margins-normal .tiptap-content { padding: 68px clamp(28px, 7vw, 84px); }
 .editor-canvas.page-margins-wide .tiptap-content { padding: 92px clamp(36px, 10vw, 112px); }
-.editor-canvas.page-border-none .tiptap-content { outline: 0; }
-.editor-canvas.page-border-single .tiptap-content::after { border-style: solid; }
-.editor-canvas.page-border-double .tiptap-content::after { border: 3px double #b9c5b3; }
+.editor-canvas.page-border-none .tiptap-content { border-color: transparent; outline: 0; }
+.editor-canvas.page-border-single .tiptap-content { border-color: #9aaf8b; }
+.editor-canvas.page-border-double .tiptap-content { border-color: #9aaf8b; }
 .editor-canvas .tiptap-content [data-page-break] {
   height: 0;
   margin: 1.5em 0;
