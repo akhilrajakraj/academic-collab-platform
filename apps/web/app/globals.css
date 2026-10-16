@@ -24,3 +24,26 @@
 @media(max-width:560px){.editor-topbar{flex-wrap:wrap;min-height:auto}.editor-breadcrumb{order:3;flex-basis:100%;flex:1 0 100%}.save-indicator{margin-left:auto}.editor-workspace{padding:10px;gap:12px}.editor-title-area{padding:22px 18px 16px}.editor-title-input{font-size:26px}.editor-meta-row{gap:8px}.editor-toolbar{padding:8px;gap:2px}.editor-toolbar button{min-width:28px;padding:0 6px}.toolbar-divider{margin:0 2px}.editor-toolbar .toolbar-side-action{padding:0 6px}.editor-canvas{padding:25px 20px;min-height:45vh}.tiptap-content{font-size:13px}.editor-footer{padding:12px;flex-direction:column}.editor-side-column{grid-template-columns:1fr}.editor-workflow-card{grid-column:auto}.editor-alert,.editor-notice{padding:10px 12px}.editor-alert{align-items:flex-start}.editor-alert>div{flex-direction:column;align-items:flex-end}.editor-missing{margin:10vh 12px;padding:24px}}
 
 .comment-resolve-button{display:block;margin-top:8px;border:0;background:transparent;color:#6554d6;font-size:9px;font-weight:600;padding:0}.comment-resolve-button:hover{text-decoration:underline}
+
+
+/* Live collaboration presence */
+.collaboration-presence {
+  padding: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.presence-heading { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.presence-heading strong { font-weight: 650; }
+.presence-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #9ca3af; }
+.presence-online { background: #16a34a; box-shadow: 0 0 0 3px rgb(22 163 74 / 12%); }
+.presence-count { margin-left: auto; min-width: 22px; padding: 2px 7px; border-radius: 999px; background: #f3f4f6; color: #374151; text-align: center; font-size: 11px; }
+.presence-list { display: grid; gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.presence-list li { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.presence-avatar { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 50%; background: #e0e7ff; color: #3730a3; font-size: 11px; font-weight: 700; }
+.presence-person { display: grid; gap: 2px; min-width: 0; }
+.presence-person strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.presence-person small { color: #6b7280; font-size: 11px; text-transform: capitalize; }
+.presence-live-label { margin-left: auto; color: #15803d; font-size: 10px; }
+.presence-empty, .presence-message { margin: 12px 0 0; color: #6b7280; font-size: 12px; line-height: 1.5; }
+.presence-message { color: #92400e; }
