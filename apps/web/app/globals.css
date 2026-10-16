@@ -179,3 +179,98 @@ button, a, input, select, textarea { outline-color: #8ca477; }
 @media (prefers-reduced-motion: reduce) {
   .stat-card, .primary-button, .nav-item { transition: none !important; }
 }
+
+
+/* Clearer hierarchy, loading feedback, and discoverable navigation controls. */
+:root {
+  --ink: #17231e;
+  --muted: #657269;
+  --line: #dfe5da;
+  --bg: #f8f8f3;
+  --panel: #fffefa;
+}
+body { font-size: 14px; line-height: 1.5; }
+.app-shell { color: #17231e; }
+.sidebar { box-shadow: 1px 0 0 rgba(31,48,43,.015); }
+.nav-item { position: relative; min-height: 42px; font-size: 13px; font-weight: 550; }
+.nav-icon { position: relative; display: inline-grid; place-items: center; width: 21px; min-width: 21px; height: 21px; border-radius: 6px; font-size: 15px; }
+.nav-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 30;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  width: max-content;
+  max-width: 230px;
+  white-space: normal;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 7px;
+  background: #1f302b;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(20,34,26,.18);
+  font: 500 11px/1.45 Arial, sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease, visibility .15s ease;
+}
+.nav-icon:hover::after, .nav-icon:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+.nav-count { font-weight: 700; font-size: 11px; }
+.welcome-row h1 { font-size: clamp(27px, 3vw, 34px); line-height: 1.2; font-weight: 750; letter-spacing: -1.15px; }
+.welcome-subtitle { font-size: 14px; line-height: 1.7; }
+.section-heading h2 { font-size: 18px; font-weight: 750; letter-spacing: -.4px; }
+.stat-value { font-size: 29px; line-height: 1.15; font-weight: 750; letter-spacing: -.8px; color: #17231e; }
+.stat-foot, .muted-copy { color: #657269; font-size: 12px; }
+.document-title-link { font-size: 13px; font-weight: 700; color: #26382e; }
+.document-updated { font-size: 12px; color: #657269; }
+.primary-button { min-height: 40px; font-size: 13px; font-weight: 700; }
+.secondary-button { min-height: 38px; font-size: 13px; font-weight: 650; }
+.profile-copy strong, .team-member strong, .activity-copy strong { font-size: 13px; font-weight: 700; }
+.profile-copy small, .team-member small, .activity-copy small { font-size: 11px; color: #657269; }
+.breadcrumbs { font-size: 12px; font-weight: 600; }
+.api-banner { line-height: 1.65; }
+.auth-loading-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.auth-loading-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; width: min(100%, 410px); padding: 42px 32px; }
+.auth-loading-card .brand-mark { margin-bottom: 6px; }
+.auth-loading-card h1 { margin: 2px 0 0; font-size: 23px; font-weight: 750; letter-spacing: -.7px; }
+.auth-loading-card p { margin: 0; color: #657269; font-size: 13px; }
+.loading-spinner {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 3px solid #e3eadb;
+  border-top-color: #4f6a42;
+  border-right-color: #8ca477;
+  border-radius: 50%;
+  animation: academic-collab-spin .75s linear infinite;
+}
+.workspace-loading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-height: 120px;
+  padding: 24px;
+  border: 1px solid #e1e7da;
+  border-radius: 11px;
+  background: #fffefa;
+}
+.workspace-loading .loading-spinner { width: 25px; height: 25px; }
+.workspace-loading strong { display: block; font-size: 14px; font-weight: 750; color: #26382e; }
+.workspace-loading p { margin: 5px 0 0; font-size: 12px; color: #657269; }
+@keyframes academic-collab-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation-duration: 1.8s; }
+  .nav-icon::after { transition: none; }
+}
+@media (max-width: 760px) {
+  body { font-size: 13px; }
+  .welcome-row h1 { font-size: 27px; }
+  .nav-icon::after { left: calc(100% + 7px); max-width: 180px; }
+}
