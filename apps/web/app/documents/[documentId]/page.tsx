@@ -226,6 +226,10 @@ export default function DocumentEditorPage() {
 
   async function updateStatus(nextStatus: ApiDocument['status']) {
     if (!document || !canEdit) return;
+    if (saveState !== 'saved') {
+      setError('Save your current edits before changing the document status.');
+      return;
+    }
     setStatus(nextStatus);
     setSaveState('dirty');
     setNotice('');
@@ -271,8 +275,29 @@ export default function DocumentEditorPage() {
     setNotice('Comment added.');
   }
 
+  async function toggleCommentResolution(comment: ApiComment) {
+    if (!canReview) return;
+    const response = await apiFetch(`${API_BASE}/comments/${comment.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolved: !comment.resolvedAt }),
+    });
+    const result = await response.json().catch(() => ({})) as ApiComment & ApiError;
+    if (!response.ok) {
+      setError(messageOf(result, 'Comment status could not be updated.'));
+      return;
+    }
+    setComments((current) => current.map((item) => item.id === comment.id ? result : item));
+    setNotice(result.resolvedAt ? 'Comment resolved.' : 'Comment reopened.');
+  }
+
   async function restoreRevision(revision: ApiRevision) {
-    if (!document || !canEdit || !window.confirm(`Restore “${revision.title}”? The current content will be preserved as a revision.`)) return;
+    if (!document || !canEdit) return;
+    if (saveState !== 'saved') {
+      setError('Save your current edits before restoring an earlier revision.');
+      return;
+    }
+    if (!window.confirm(`Restore “${revision.title}”? The current content will be preserved as a revision.`)) return;
     const response = await apiFetch(`${API_BASE}/documents/${document.id}/revisions/${revision.id}/restore`, { method: 'POST' });
     const result = await response.json().catch(() => ({})) as ApiDocument & ApiError;
     if (!response.ok) {
@@ -340,8 +365,8 @@ export default function DocumentEditorPage() {
           </section>
           <aside className="editor-side-column">
             {showHistory && <section className="editor-side-card"><div className="editor-side-heading"><div><h2>Version history</h2><p>Restore an earlier saved version.</p></div><button onClick={() => setShowHistory(false)} aria-label="Close history">×</button></div><div className="revision-list">{revisions.map((revision) => <article className="revision-item" key={revision.id}><span className="revision-marker" /><div><strong>{revision.title || 'Untitled version'}</strong><small>{revision.author?.displayName || 'Collaborator'} · {new Date(revision.createdAt).toLocaleString()}</small>{canEdit && <button className="revision-restore" onClick={() => void restoreRevision(revision)}>Restore version</button>}</div></article>)}{!revisions.length && <p className="editor-empty">No earlier revisions yet. A snapshot is created when content changes.</p>}</div></section>}
-            {showComments && <section className="editor-side-card"><div className="editor-side-heading"><div><h2>Discussion</h2><p>Comments on this document</p></div><span className="comment-count">{comments.length}</span></div>{canReview && <form className="comment-compose" onSubmit={(event: FormEvent<HTMLFormElement>) => void addComment(event)}><label htmlFor="new-comment">Add a comment</label><textarea id="new-comment" value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Share feedback or ask a question…" rows={3} maxLength={5000} /><button className="primary-button" type="submit" disabled={!commentText.trim()}>Post comment <span>→</span></button></form>}<div className="editor-comment-list">{comments.map((comment) => <article className="editor-comment" key={comment.id}><div className="comment-avatar">{(comment.author?.displayName || 'U').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</div><div className="comment-content"><div className="comment-byline"><strong>{comment.author?.displayName || 'Collaborator'}</strong><time>{new Date(comment.createdAt).toLocaleDateString()}</time></div><p>{comment.body}</p>{comment.resolvedAt && <span className="resolved-label">Resolved</span>}</div></article>)}{!comments.length && <p className="editor-empty">No comments yet. Start the discussion with your team.</p>}</div></section>}
-            <section className="editor-side-card editor-workflow-card"><h2>Review workflow</h2><p>Change the document status when it is ready for review.</p><label htmlFor="document-status">Document status</label><select id="document-status" value={status} disabled={!canEdit || saving} onChange={(event) => void updateStatus(event.target.value as ApiDocument['status'])}><option value="DRAFT">Draft</option><option value="IN_REVIEW">In review</option><option value="APPROVED">Approved</option>{role === 'OWNER' && <option value="ARCHIVED">Archived</option>}</select><small>Project owners control archiving. The API enforces all role permissions.</small></section>
+            {showComments && <section className="editor-side-card"><div className="editor-side-heading"><div><h2>Discussion</h2><p>Comments on this document</p></div><span className="comment-count">{comments.length}</span></div>{canReview && <form className="comment-compose" onSubmit={(event: FormEvent<HTMLFormElement>) => void addComment(event)}><label htmlFor="new-comment">Add a comment</label><textarea id="new-comment" value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Share feedback or ask a question…" rows={3} maxLength={5000} /><button className="primary-button" type="submit" disabled={!commentText.trim()}>Post comment <span>→</span></button></form>}<div className="editor-comment-list">{comments.map((comment) => <article className="editor-comment" key={comment.id}><div className="comment-avatar">{(comment.author?.displayName || 'U').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</div><div className="comment-content"><div className="comment-byline"><strong>{comment.author?.displayName || 'Collaborator'}</strong><time>{new Date(comment.createdAt).toLocaleDateString()}</time></div><p>{comment.body}</p>{comment.resolvedAt && <span className="resolved-label">Resolved</span>}{canReview && <button className="comment-resolve-button" onClick={() => void toggleCommentResolution(comment)}>{comment.resolvedAt ? 'Reopen' : 'Resolve'}</button>}</div></article>)}{!comments.length && <p className="editor-empty">No comments yet. Start the discussion with your team.</p>}</div></section>}
+            <section className="editor-side-card editor-workflow-card"><h2>Review workflow</h2><p>Change the document status when it is ready for review.</p><label htmlFor="document-status">Document status</label><select id="document-status" value={status} disabled={!canEdit || saving || saveState !== 'saved'} onChange={(event) => void updateStatus(event.target.value as ApiDocument['status'])}><option value="DRAFT">Draft</option><option value="IN_REVIEW">In review</option><option value="APPROVED">Approved</option>{role === 'OWNER' && <option value="ARCHIVED">Archived</option>}</select><small>Project owners control archiving. The API enforces all role permissions.</small></section>
           </aside>
         </div>
       </>}
