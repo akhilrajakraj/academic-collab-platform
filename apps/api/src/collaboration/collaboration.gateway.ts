@@ -3,13 +3,13 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { DocumentStatus, ProjectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
 import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -36,34 +36,36 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
     credentials: true,
   },
 })
-export class CollaborationGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
-
-  private readonly logger = new Logger(CollaborationGateway.name);
 
   constructor(
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
   ) {}
 
-  async handleConnection(client: AuthenticatedSocket): Promise<void> {
-    const token = client.handshake.auth?.token;
-    if (typeof token !== 'string' || !token.trim()) {
-      client.emit('collaboration-error', { code: 'AUTH_REQUIRED', message: 'A valid access token is required.' });
-      client.disconnect(true);
-      return;
-    }
+  afterInit(server: Server): void {
+    server.use(async (socket: AuthenticatedSocket, next) => {
+      const token = socket.handshake.auth?.token;
+      if (typeof token !== 'string' || !token.trim()) {
+        next(new Error('A valid access token is required.'));
+        return;
+      }
+      try {
+        const payload = await this.jwt.verifyAsync<{ sub: string; email: string }>(token);
+        if (!payload.sub || !payload.email) throw new Error('Missing token claims');
+        socket.data.userId = payload.sub;
+        socket.data.email = payload.email;
+        next();
+      } catch {
+        next(new Error('The access token is invalid or expired.'));
+      }
+    });
+  }
 
-    try {
-      const payload = await this.jwt.verifyAsync<{ sub: string; email: string }>(token);
-      if (!payload.sub || !payload.email) throw new Error('Missing token claims');
-      client.data.userId = payload.sub;
-      client.data.email = payload.email;
-    } catch {
-      client.emit('collaboration-error', { code: 'INVALID_TOKEN', message: 'The access token is invalid or expired.' });
-      client.disconnect(true);
-    }
+  handleConnection(_client: AuthenticatedSocket): void {
+    // Namespace middleware authenticates the socket before the connection is accepted.
   }
 
   async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
