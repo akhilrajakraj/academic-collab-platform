@@ -58,6 +58,7 @@ export default function HomePage() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
   const [projects, setProjects] = useState<ApiProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [query, setQuery] = useState('');
@@ -103,7 +104,7 @@ export default function HomePage() {
     void apiFetch(API_BASE + '/auth/me', { cache: 'no-store' })
       .then(async (response) => { if (response.ok) setAccount(await response.json()); })
       .catch(() => undefined);
-  }, [apiFetch, token]);
+  }, [apiFetch, selectedProjectId, token]);
 
   const loadWorkspace = useCallback(async () => {
     if (!token) return;
@@ -126,9 +127,11 @@ export default function HomePage() {
         nextProjects = [starter];
       }
       setProjects(nextProjects);
+      const activeProject = nextProjects.find((project) => project.id === selectedProjectId) || nextProjects[0];
+      if (activeProject) setSelectedProjectId(activeProject.id);
 
-      if (nextProjects[0]) {
-        const projectId = nextProjects[0].id;
+      if (activeProject) {
+        const projectId = activeProject.id;
         const [membersResponse, invitationsResponse] = await Promise.all([
           apiFetch(`${API_BASE}/projects/${projectId}/members`, { cache: 'no-store' }),
           apiFetch(`${API_BASE}/projects/${projectId}/invitations`, { cache: 'no-store' }),
@@ -159,8 +162,8 @@ export default function HomePage() {
       }));
       setDocuments(documentGroups.flat());
 
-      if (nextProjects[0]) {
-        const activityResponse = await apiFetch(`${API_BASE}/projects/${nextProjects[0].id}/activity`, { cache: 'no-store' });
+      if (activeProject) {
+        const activityResponse = await apiFetch(`${API_BASE}/projects/${activeProject.id}/activity`, { cache: 'no-store' });
         if (activityResponse.ok) {
           const rows: ApiActivity[] = await activityResponse.json();
           setActivities(rows.map(activityView));
@@ -177,6 +180,8 @@ export default function HomePage() {
 
   useEffect(() => { if (token) void loadWorkspace(); }, [token, loadWorkspace]);
 
+  const activeProject = projects.find((project) => project.id === selectedProjectId) || projects[0];
+
   const filtered = useMemo(() => documents.filter((doc) =>
     (doc.title.toLowerCase().includes(query.toLowerCase()) || doc.project.toLowerCase().includes(query.toLowerCase())) &&
     (selectedFilter === 'All documents' || doc.status === selectedFilter)
@@ -184,7 +189,7 @@ export default function HomePage() {
 
   async function createDocument() {
     const title = newTitle.trim();
-    const project = projects[0];
+    const project = activeProject;
     if (!title || !project || saving) return;
     setSaving(true);
     setNotice('');
@@ -221,7 +226,7 @@ export default function HomePage() {
 
   async function createInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const project = projects[0];
+    const project = activeProject;
     if (!project || !inviteEmail.trim() || teamBusy) return;
     setTeamBusy(true);
     setTeamError('');
@@ -258,8 +263,9 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: acceptToken.trim() }),
       });
-      const result = await response.json().catch(() => ({})) as { message?: string | string[] };
+      const result = await response.json().catch(() => ({})) as { message?: string | string[]; projectId?: string };
       if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(' ') : result.message || 'Invitation could not be accepted.');
+      if (result.projectId) setSelectedProjectId(result.projectId);
       setAcceptToken('');
       setNotice('Invitation accepted. The shared project is now available in your workspace.');
       await loadWorkspace();
@@ -271,7 +277,7 @@ export default function HomePage() {
   }
 
   async function changeMemberRole(member: ApiMember, role: 'EDITOR' | 'REVIEWER' | 'VIEWER') {
-    const project = projects[0];
+    const project = activeProject;
     if (!project || teamBusy) return;
     setTeamBusy(true);
     setTeamError('');
@@ -292,7 +298,7 @@ export default function HomePage() {
   }
 
   async function removeMember(member: ApiMember) {
-    const project = projects[0];
+    const project = activeProject;
     if (!project || teamBusy || member.role === 'OWNER') return;
     if (!window.confirm(`Remove ${member.user.displayName} from this project?`)) return;
     setTeamBusy(true);
@@ -310,7 +316,7 @@ export default function HomePage() {
   }
 
   async function revokeInvitation(invitation: ApiInvitation) {
-    const project = projects[0];
+    const project = activeProject;
     if (!project || teamBusy || invitation.status !== 'PENDING') return;
     setTeamBusy(true);
     setTeamError('');
@@ -428,7 +434,7 @@ export default function HomePage() {
             <article className="stat-card"><div className="stat-top"><span>Memberships</span><span className="stat-icon green-icon">♧</span></div><div className="stat-value">{collaboratorCount}</div><div className="stat-foot">Project memberships</div></article>
           </section>
           <section className="team-panel" id="shared" aria-labelledby="team-title">
-            <div className="section-heading"><div><h2 id="team-title">Project team</h2><p>Manage access for {projects[0]?.name || 'your project'}.</p></div><span className="team-count">{members.length} member{members.length === 1 ? '' : 's'}</span></div>
+            <div className="section-heading"><div><h2 id="team-title">Project team</h2><p>Manage access for {activeProject?.name || 'your project'}.</p></div><div className="team-heading-actions">{projects.length > 1 && <label className="project-picker-label">Project <select aria-label="Choose project team" value={activeProject?.id || ''} onChange={(event) => setSelectedProjectId(event.target.value)}>{projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select></label>}<span className="team-count">{members.length} member{members.length === 1 ? '' : 's'}</span></div></div>
             {teamError && <div className="api-banner" role="alert">{teamError}<button onClick={() => setTeamError('')}>Dismiss</button></div>}
             <div className="team-layout">
               <div className="team-members">
@@ -469,7 +475,7 @@ export default function HomePage() {
           <footer className="page-footer"><span>Made for curious minds <span className="footer-heart">♥</span></span><span>Academic Collab · API-backed development preview</span></footer>
         </div>
       </section>
-      {showCreate && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title"><button className="modal-close" onClick={() => setShowCreate(false)} disabled={saving} aria-label="Close dialog">×</button><div className="modal-icon">▤</div><p className="eyebrow">SAVE TO YOUR PROJECT</p><h2 id="create-title">Create a document</h2><p className="modal-description">Your document will be saved in the first project in your workspace.</p><form onSubmit={(event) => { event.preventDefault(); void createDocument(); }}><label htmlFor="document-title">Document title</label><input id="document-title" autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Project proposal" maxLength={160} required /><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="primary-button" disabled={saving || !newTitle.trim()}>{saving ? 'Saving…' : 'Create document'} <span>→</span></button></div></form><p className="demo-note">Signed-in account · This document is stored in PostgreSQL. Real-time collaboration is not yet enabled.</p></section></div>}
+      {showCreate && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title"><button className="modal-close" onClick={() => setShowCreate(false)} disabled={saving} aria-label="Close dialog">×</button><div className="modal-icon">▤</div><p className="eyebrow">SAVE TO YOUR PROJECT</p><h2 id="create-title">Create a document</h2><p className="modal-description">Your document will be saved in {activeProject?.name || 'your selected project'}.</p><form onSubmit={(event) => { event.preventDefault(); void createDocument(); }}><label htmlFor="document-title">Document title</label><input id="document-title" autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Project proposal" maxLength={160} required /><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="primary-button" disabled={saving || !newTitle.trim()}>{saving ? 'Saving…' : 'Create document'} <span>→</span></button></div></form><p className="demo-note">Signed-in account · This document is stored in PostgreSQL. Real-time collaboration is not yet enabled.</p></section></div>}
     </main>
   );
 }
