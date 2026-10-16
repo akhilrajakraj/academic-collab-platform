@@ -603,3 +603,44 @@ body { font-size: 14px; line-height: 1.5; }
   .editor-canvas .tiptap-content [data-page-break] { height: 0; margin: 0; border: 0; }
   .editor-canvas .tiptap-content [data-page-break]::after { display: none; }
 }
+
+
+/* M05: accessible table presentation for the document editor. */
+.editor-canvas .tiptap-content table.academic-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 1.25em 0;
+  overflow: hidden;
+}
+.editor-canvas .tiptap-content table.academic-editor-table td,
+.editor-canvas .tiptap-content table.academic-editor-table th {
+  min-width: 72px;
+  border: 1px solid var(--table-border-color, #cbd5c5);
+  padding: 9px 10px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.editor-canvas .tiptap-content table.academic-editor-table th {
+  background: #f0f3eb;
+  color: #293b2f;
+  font-weight: 750;
+  text-align: left;
+}
+.editor-canvas .tiptap-content table.academic-editor-table td p,
+.editor-canvas .tiptap-content table.academic-editor-table th p { margin: .25em 0; }
+.editor-canvas .tiptap-content table.academic-editor-table td:focus,
+.editor-canvas .tiptap-content table.academic-editor-table th:focus { outline: 2px solid #829a70; outline-offset: -2px; }
+.editor-canvas .tiptap-content table.academic-editor-table td[data-border-color],
+.editor-canvas .tiptap-content table.academic-editor-table th[data-border-color] { border-color: attr(data-border-color); }
+@media (max-width: 760px) {
+  .editor-canvas .tiptap-content table.academic-editor-table { font-size: 12px; }
+  .editor-canvas .tiptap-content table.academic-editor-table td,
+  .editor-canvas .tiptap-content table.academic-editor-table th { min-width: 58px; padding: 7px 6px; }
+}
+@media print {
+  .editor-canvas .tiptap-content table.academic-editor-table { page-break-inside: auto; break-inside: auto; }
+  .editor-canvas .tiptap-content table.academic-editor-table tr { page-break-inside: avoid; break-inside: avoid; }
+  .editor-canvas .tiptap-content table.academic-editor-table td,
+  .editor-canvas .tiptap-content table.academic-editor-table th { border: 1px solid #888; }
+}
