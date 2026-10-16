@@ -115,7 +115,7 @@ export default function DocumentsPage() {
       </aside>
 
       <section className="main-panel">
-        <header className="topbar"><div className="breadcrumbs"><Link href="/workspace">Workspace</Link><span>/</span><strong>Documents</strong></div><div className="topbar-actions"><button className="icon-button" title="Refresh document list" aria-label="Refresh document list" onClick={() => void loadDocuments()}>↻</button><button className="top-avatar signout-avatar" onClick={signOut} aria-label="Sign out" title="Sign out">↗</button></div></header>
+        <header className="topbar"><div className="breadcrumbs"><Link href="/workspace">Overview</Link><span>/</span><strong>Documents</strong></div><div className="topbar-actions"><button className="icon-button" title="Refresh document list" aria-label="Refresh document list" onClick={() => void loadDocuments()}>↻</button><button className="top-avatar signout-avatar" onClick={signOut} aria-label="Sign out" title="Sign out">↗</button></div></header>
         <div className="page-content documents-page-content">
           <div className="welcome-row documents-page-heading"><div><p className="eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Documents</h1><p className="welcome-subtitle">Find drafts, pick up where you left off, and keep every project organised.</p></div><div className="document-page-count"><strong>{documents.length.toString().padStart(2, '0')}</strong><span>Total documents</span></div></div>
           {error && <div className="api-banner" role="alert"><strong>Couldn’t load documents</strong><p>{error}</p><button className="secondary-button" onClick={() => void loadDocuments()}>Try again</button></div>}
