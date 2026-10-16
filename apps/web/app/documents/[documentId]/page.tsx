@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { Extension, Mark } from '@tiptap/core';
+import { Extension, Mark, Node } from '@tiptap/core';
 import TextStyle from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -115,6 +115,31 @@ const ParagraphLayoutAttributes = Extension.create({
   },
 });
 
+
+const PageLayoutAttributes = Extension.create({
+  name: 'pageLayoutAttributes',
+  addGlobalAttributes() {
+    return [{
+      types: ['doc'],
+      attributes: {
+        pageSize: { default: 'A4', parseHTML: () => 'A4', renderHTML: () => ({}) },
+        pageOrientation: { default: 'portrait', parseHTML: () => 'portrait', renderHTML: () => ({}) },
+        pageMargins: { default: 'normal', parseHTML: () => 'normal', renderHTML: () => ({}) },
+        pageBorder: { default: 'none', parseHTML: () => 'none', renderHTML: () => ({}) },
+      },
+    }];
+  },
+});
+
+const PageBreakNode = Node.create({
+  name: 'pageBreak',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  parseHTML() { return [{ tag: 'div[data-page-break]' }]; },
+  renderHTML() { return ['div', { 'data-page-break': 'true', 'aria-label': 'Page break' }]; },
+});
+
 function messageOf(error: ApiError | null, fallback: string) {
   return Array.isArray(error?.message) ? error.message.join(' ') : error?.message || fallback;
 }
@@ -176,6 +201,8 @@ export default function DocumentEditorPage() {
       TextStyle,
       TextStyleAttributes,
       ParagraphLayoutAttributes,
+      PageLayoutAttributes,
+      PageBreakNode,
       UnderlineMark,
       SubscriptMark,
       SuperscriptMark,
@@ -343,6 +370,23 @@ export default function DocumentEditorPage() {
     if (!editor || !canEdit) return;
     const node = editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph');
     updateParagraphLayout({ paragraphBorder: node.paragraphBorder ? null : '#b9c5b3' });
+  }
+
+  const pageLayout = editor?.getAttributes('doc') as { pageSize?: string; pageOrientation?: string; pageMargins?: string; pageBorder?: string } | undefined;
+
+  function updatePageLayout(attribute: 'pageSize' | 'pageOrientation' | 'pageMargins' | 'pageBorder', value: string) {
+    if (!editor || !canEdit) return;
+    editor.chain().focus().command(({ tr, dispatch }) => {
+      if (dispatch) {
+        tr.setDocAttribute(attribute, value);
+      }
+      return true;
+    }).run();
+  }
+
+  function insertPageBreak() {
+    if (!editor || !canEdit) return;
+    editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
   }
 
   function downloadWordDocument() {
@@ -558,6 +602,33 @@ export default function DocumentEditorPage() {
               <button title="Promote list item" aria-label="Promote list item" disabled={!canEdit || !editor || !editor.isActive('listItem')} onClick={() => editor?.chain().focus().liftListItem('listItem').run()}>⇤•</button>
               <button title="Nest list item" aria-label="Nest list item" disabled={!canEdit || !editor || !editor.isActive('listItem')} onClick={() => editor?.chain().focus().sinkListItem('listItem').run()}>⇥•</button>
               <button title="Restart numbered list at 1" aria-label="Restart numbered list at 1" disabled={!canEdit || !editor || !editor.isActive('orderedList')} onClick={() => editor?.chain().focus().updateAttributes('orderedList', { start: 1 }).run()}>1↻</button>
+              <span className="toolbar-divider" />
+              <label className="toolbar-select-control" title="Paper size">
+                <span className="sr-only">Paper size</span>
+                <select aria-label="Paper size" disabled={!canEdit || !editor} value={pageLayout?.pageSize || 'A4'} onChange={(event) => updatePageLayout('pageSize', event.target.value)}>
+                  <option value="A4">A4</option><option value="Letter">Letter</option><option value="Legal">Legal</option>
+                </select>
+              </label>
+              <label className="toolbar-select-control" title="Page orientation">
+                <span className="sr-only">Page orientation</span>
+                <select aria-label="Page orientation" disabled={!canEdit || !editor} value={pageLayout?.pageOrientation || 'portrait'} onChange={(event) => updatePageLayout('pageOrientation', event.target.value)}>
+                  <option value="portrait">Portrait</option><option value="landscape">Landscape</option>
+                </select>
+              </label>
+              <label className="toolbar-select-control" title="Page margins">
+                <span className="sr-only">Page margins</span>
+                <select aria-label="Page margins" disabled={!canEdit || !editor} value={pageLayout?.pageMargins || 'normal'} onChange={(event) => updatePageLayout('pageMargins', event.target.value)}>
+                  <option value="narrow">Narrow margins</option><option value="normal">Normal margins</option><option value="wide">Wide margins</option>
+                </select>
+              </label>
+              <label className="toolbar-select-control" title="Page border">
+                <span className="sr-only">Page border</span>
+                <select aria-label="Page border" disabled={!canEdit || !editor} value={pageLayout?.pageBorder || 'none'} onChange={(event) => updatePageLayout('pageBorder', event.target.value)}>
+                  <option value="none">No border</option><option value="single">Single border</option><option value="double">Double border</option>
+                </select>
+              </label>
+              <button title="Insert page break" aria-label="Insert page break" disabled={!canEdit || !editor} onClick={insertPageBreak}>↵▱</button>
+              <span className="toolbar-divider" />
               <button title="Heading 1" aria-label="Heading 1" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 1 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
               <button title="Heading 2" aria-label="Heading 2" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 2 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
               <button title="Heading 3" aria-label="Heading 3" disabled={!canEdit || !editor} className={editor?.isActive('heading', { level: 3 }) ? 'is-active' : ''} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
@@ -577,7 +648,7 @@ export default function DocumentEditorPage() {
               <button className="toolbar-side-action" onClick={() => setShowHistory((value) => !value)} aria-expanded={showHistory}>◷ History</button>
               <button className="toolbar-side-action" onClick={() => setShowComments((value) => !value)} aria-expanded={showComments}>▤ Comments</button>
             </div>
-            <div className="editor-canvas"><EditorContent editor={editor} /></div>
+            <div className={`editor-canvas page-size-${(pageLayout?.pageSize || 'A4').toLowerCase()} page-orientation-${pageLayout?.pageOrientation || 'portrait'} page-margins-${pageLayout?.pageMargins || 'normal'} page-border-${pageLayout?.pageBorder || 'none'}`}><EditorContent editor={editor} /></div>
             <footer className="editor-footer"><span>Autosaves after you pause typing</span><span>Structured document · JSON persistence</span></footer>
           </section>
           <aside className="editor-side-column">\n            <CollaborationPresence documentId={document.id} token={token} />
