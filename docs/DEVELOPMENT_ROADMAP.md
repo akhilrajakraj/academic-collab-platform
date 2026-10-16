@@ -15,7 +15,7 @@ A student can create a project, invite collaborators, co-author a structured doc
 | M2 — Project and membership collaboration | Project lifecycle, invitations, accept/decline/expire/revoke, role management, member UI | Invitation API, schema migration and team UI implemented on this branch; runtime verification pending | Owner invites a collaborator and can safely change/revoke membership |
 | M3 — Document editing and persistence | Rich-text editor, structured content, autosave, save state, stale-write protection | Tiptap editor route and debounced autosave implemented on this branch; CI and runtime verification pending | Edits survive refresh and concurrent stale saves return a conflict instead of overwriting |
 | M4 — Review and revision workflow | Comments, anchored comments, resolve/reopen, document status transitions, revision history/restore | Basic comment and revision APIs exist; full UI/workflow planned | Reviewers can comment; permitted editors manage status; old versions can be restored safely |
-| M5 — Real-time collaboration | Yjs document model, WebSocket provider, presence, reconnect/recovery, server-side authorization | Planned | Two clients can edit concurrently and converge after reconnect |
+| M5 — Real-time collaboration | Authenticated Socket.IO presence rooms and membership-aware room access; shared document sync and Yjs persistence remain planned | Foundation in progress | Authorized collaborators see live presence; later acceptance requires concurrent edits and reconnect convergence |
 | M6 — Export and file handling | PDF/DOCX export, templates, background jobs, object storage, export history | Planned; MinIO is configured for local development | Exported file opens correctly and preserves document structure |
 | M7 — Academic assistance | Opt-in outline suggestions, writing feedback, citation assistance, source-aware suggestions | Planned | AI output is reviewable, source-aware where applicable, and never silently replaces user text |
 | M8 — Release readiness | Accessibility, observability, backups, rate limits, security headers, deployment/runbooks | Partial foundation; verification required | Reproducible release, documented recovery, security and accessibility checks pass |
@@ -71,10 +71,11 @@ A student can create a project, invite collaborators, co-author a structured doc
 - Define allowed status transitions and enforce them on the server.
 
 ### M5.1 — Live collaboration
-- Introduce Yjs only after single-user editing and conflict behavior are reliable.
-- Define a persistence format and migration strategy before changing the source of truth.
-- Authorize WebSocket rooms with project membership and revalidate access.
-- Test concurrent edits, disconnects, reconnects and document access revocation.
+- Implemented on this branch: Socket.IO `/collaboration` namespace with JWT verification in namespace middleware, so unauthenticated/expired-token sockets are rejected before connection acceptance.
+- Implemented on this branch: `join-document` validates UUID shape and checks project membership server-side before joining a document room; the server emits role-aware join details and deduplicated live-presence snapshots.
+- Implemented on this branch: editor-side presence panel with reconnect attempts, connection state and online collaborator labels.
+- Remaining: Yjs shared document state, server-side update persistence, permission revalidation when memberships are revoked, explicit leave/disconnect presence tests, and two-client concurrency/reconnect acceptance tests.
+- Keep the existing JSON document/autosave API authoritative until the Yjs persistence/migration design is implemented and tested.
 
 ### M6–M8 — Export, academic assistance and production readiness
 - Add PDF/DOCX export through a tested conversion pipeline.
