@@ -187,7 +187,7 @@ export default function DocumentEditorPage() {
       }
       if (!response.ok) throw new Error(messageOf(result, 'Save failed.'));
       updatedAtRef.current = result.updatedAt;
-      setDocument(result);
+      setDocument((current) => current ? { ...current, ...result, project: current.project } : current);
       baselineRef.current = JSON.stringify({ title: result.title, content: result.content, status: result.status });
       if (pendingRef.current || JSON.stringify({ title: titleRef.current.trim(), content: currentEditor.getJSON(), status }) !== baselineRef.current) {
         pendingRef.current = false;
@@ -321,7 +321,7 @@ export default function DocumentEditorPage() {
     saved: 'Saved', dirty: 'Unsaved changes', saving: 'Saving…', failed: 'Save failed', conflict: 'Conflict detected',
   })[saveState], [saveState]);
 
-  if (!authReady || loading) return <main className="editor-loading"><div className="editor-loading-mark">A</div><strong>Opening your document…</strong><span>Loading the latest saved version.</span></main>;
+  if (!authReady || (Boolean(token) && loading)) return <main className="editor-loading"><div className="editor-loading-mark">A</div><strong>Opening your document…</strong><span>Loading the latest saved version.</span></main>;
   if (!token) return <main className="editor-loading"><strong>Sign in to open this document</strong><button className="secondary-button" onClick={() => router.replace('/')}>Back to workspace</button></main>;
 
   return (
