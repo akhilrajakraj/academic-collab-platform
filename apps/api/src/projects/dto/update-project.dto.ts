@@ -3,7 +3,7 @@ import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-valid
 export class UpdateProjectDto {
   @IsOptional()
   @IsString()
-  @Matches(/\\S/, { message: 'Project name cannot be blank.' })
+  @Matches(/\S/, { message: 'Project name cannot be blank.' })
   @MinLength(2)
   @MaxLength(100)
   name?: string;
