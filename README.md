@@ -67,3 +67,7 @@ The implementation is divided into independently reviewable modules covering pla
 ### Project collaboration API
 
 The project invitation and membership endpoints, role rules, token lifecycle, and known limitations are documented in [docs/PROJECT_COLLABORATION_API.md](docs/PROJECT_COLLABORATION_API.md). Invitation email delivery is not yet implemented; development invitations return a one-time token for secure out-of-band sharing.
+
+### Document editing workspace
+
+The development branch includes a Tiptap editor at `/documents/:documentId`, with structured JSON persistence, debounced autosave, save-state feedback, stale-write conflict handling, revision history/restore, comments, and document status controls. Open a document from the dashboard to use the editor. This milestone still requires runtime testing against PostgreSQL and a fresh CI pass; real-time multi-user editing is not yet implemented.
